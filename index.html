@@ -1,0 +1,1855 @@
+<title>i-QC</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: sidebar + content on desktop; top bar + bottom tab bar on phone. Process colors borrow the four print inks (cyan, magenta, yellow, key). */
+:root{
+  --bg:#EDF0F3; --surface:#FFFFFF; --surface-2:#E4E9ED; --line:#D0D7DE;
+  --fg:#14202B; --fg-2:#46555F; --fg-3:#6F7E89;
+  --accent:#1D3F9E; --accent-fg:#FFFFFF; --accent-soft:#DDE5FA;
+  --ok:#1B7A4B; --ok-bg:#DAF0E3; --ng:#BE2F29; --ng-bg:#F8DEDB; --hold:#935400; --hold-bg:#FAEAC8;
+  --ink-c:#0F8FB0; --ink-m:#BD2E78; --ink-y:#C99700; --ink-k:#2A3138;
+  --scrim:rgba(8,14,20,.55);
+  --f-display:'Barlow Semi Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E151B; --surface:#16202A; --surface-2:#1E2A35; --line:#2C3A47;
+    --fg:#E7EDF1; --fg-2:#A9B6C1; --fg-3:#7E8D99;
+    --accent:#8FA9FF; --accent-fg:#0A1430; --accent-soft:#1F2C55;
+    --ok:#5FCF95; --ok-bg:#15392A; --ng:#FF8E85; --ng-bg:#46201E; --hold:#F3B756; --hold-bg:#40311A;
+    --ink-c:#4DC3E2; --ink-m:#EE77B0; --ink-y:#F1C53F; --ink-k:#B3BDC6;
+    --scrim:rgba(0,0,0,.65); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E151B; --surface:#16202A; --surface-2:#1E2A35; --line:#2C3A47;
+  --fg:#E7EDF1; --fg-2:#A9B6C1; --fg-3:#7E8D99;
+  --accent:#8FA9FF; --accent-fg:#0A1430; --accent-soft:#1F2C55;
+  --ok:#5FCF95; --ok-bg:#15392A; --ng:#FF8E85; --ng-bg:#46201E; --hold:#F3B756; --hold-bg:#40311A;
+  --ink-c:#4DC3E2; --ink-m:#EE77B0; --ink-y:#F1C53F; --ink-k:#B3BDC6;
+  --scrim:rgba(0,0,0,.65); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body);margin:0;min-height:100dvh}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;margin:0;text-wrap:balance;letter-spacing:.005em}
+h1{font-size:30px;line-height:1.1;font-weight:700}
+h2{font-size:20px;line-height:1.2}
+h3{font-size:16px}
+p{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--fg-2)} .faint{color:var(--fg-3)}
+.eyebrow{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+
+/* process color per group */
+.g-printing{--pc:var(--ink-m)} .g-laminasi{--pc:var(--ink-c)} .g-slitting{--pc:var(--ink-y)} .g-bag{--pc:var(--ink-k)}
+.pdot{width:10px;height:10px;border-radius:50%;background:var(--pc);flex:none;box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--line)}
+
+/* shell */
+.shell{display:grid;grid-template-columns:248px minmax(0,1fr);min-height:100dvh}
+.side{position:sticky;top:0;height:100dvh;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:24px;padding-block:22px;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:20px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:.01em}
+.brand svg{width:28px;height:28px;color:var(--accent)}
+.side .brand,.top .brand{background:var(--accent);color:var(--accent-fg);padding:9px 16px 9px 12px;border-radius:12px;width:fit-content}
+.side .brand svg,.top .brand svg{color:var(--accent-fg)}
+.side .brand svg rect,.side .brand svg circle,.top .brand svg rect,.top .brand svg circle{fill:var(--accent-fg)!important}
+.side .brand svg path,.top .brand svg path{stroke:var(--accent)!important}
+.nav{display:flex;flex-direction:column;gap:4px}
+.nav button{display:flex;align-items:center;gap:12px;background:none;border:0;padding:11px 12px;border-radius:8px;color:var(--fg-2);text-align:left;font-weight:500;min-height:44px}
+.nav button svg{width:20px;height:20px;flex:none}
+.nav button:hover{background:var(--surface-2)}
+.nav button[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.nav .badge{margin-left:auto;font-size:12px;font-family:var(--f-mono);background:var(--hold-bg);color:var(--hold);border-radius:99px;padding:1px 8px}
+.me{margin-top:auto;display:flex;flex-direction:column;gap:10px;padding-top:16px;border-top:1px solid var(--line)}
+.me b{display:block;font-weight:600}
+.col{min-width:0;display:flex;flex-direction:column}
+.top{display:none}
+.main{padding-block:28px 56px;padding-left:max(32px,env(safe-area-inset-left,0px));padding-right:max(32px,env(safe-area-inset-right,0px));width:100%;max-width:none;display:flex;flex-direction:column;gap:24px;min-width:0}
+.tabbar{display:none}
+.pagehead{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
+.pagehead .sub{margin-top:4px;color:var(--fg-2)}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:8px;border:1px solid var(--line);background:var(--surface);font-weight:600}
+.btn:hover{background:var(--surface-2)}
+.btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn.pri:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--ng);border-color:var(--ng)}
+.btn.sm{min-height:36px;padding:0 12px;font-size:14px}
+.btn.ghost{background:none;border-color:transparent;color:var(--fg-2)}
+.btn svg{width:18px;height:18px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fld>label,.fld>.lbl{font-size:13px;font-weight:600;color:var(--fg-2)}
+.in{width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);min-width:0}
+textarea.in{min-height:84px;resize:vertical}
+select.in{appearance:auto}
+.in::placeholder{color:var(--fg-3)}
+.req{color:var(--ng)}
+
+/* surfaces */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.pad{padding:18px 20px}
+.sechead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;padding:2px 10px;border-radius:99px;white-space:nowrap}
+.chip i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.chip.ng{background:var(--ng-bg);color:var(--ng)}
+.chip.hold{background:var(--hold-bg);color:var(--hold)}
+.chip.mute{background:var(--surface-2);color:var(--fg-3);font-weight:500}
+.chip.info{background:var(--accent-soft);color:var(--accent)}
+
+/* auth */
+.auth{min-height:100dvh;display:grid;place-items:center;padding-block:32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.authcard{width:min(420px,100%);display:flex;flex-direction:column;gap:20px}
+.authcard .brand{font-size:28px}
+.authcard .brand svg{width:36px;height:36px}
+.auth2{min-height:100dvh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}
+.authhero{background:var(--accent);color:var(--accent-fg);padding:48px clamp(28px,5vw,72px);display:flex;flex-direction:column;justify-content:space-between;gap:32px;position:relative;overflow:hidden}
+.authhero::before,.authhero::after{content:"";position:absolute;border-radius:50%;border:1px solid currentColor;opacity:.14;pointer-events:none}
+.authhero::before{width:520px;height:520px;right:-180px;bottom:-200px}
+.authhero::after{width:320px;height:320px;right:-60px;bottom:-90px}
+.authhero .brand{color:inherit;font-size:26px}
+.authhero .brand svg{width:34px;height:34px;color:var(--accent-fg)}
+.authhero .brand svg rect,.authhero .brand svg circle{fill:var(--accent-fg)!important}
+.authhero .brand svg path{stroke:var(--accent)!important}
+.authhero h2{font-family:var(--f-display);font-size:clamp(34px,4.2vw,52px);line-height:1.05;font-weight:700;letter-spacing:-.01em;max-width:13ch}
+.authhero p{font-size:16px;opacity:.85;max-width:38ch;margin-top:14px;line-height:1.5}
+.authhero ul{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;position:relative;z-index:1}
+.authhero li{font-size:13px;font-weight:600;padding:6px 12px;border-radius:99px;border:1px solid currentColor;opacity:.9}
+.authhero .mid{position:relative;z-index:1}
+.authside{display:grid;place-items:center;padding:32px max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px))}
+.authside .authcard{gap:18px}
+.authside .authcard>div h1{font-size:30px}
+.authside form.panel{padding:22px;box-shadow:0 1px 2px rgba(15,25,35,.06),0 8px 24px rgba(15,25,35,.06)}
+.pinbox{position:relative;display:flex}
+.pinbox .in{flex:1;padding-right:48px}
+.pinbox .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:40px;height:40px;border:0;background:transparent;color:var(--fg-3);border-radius:8px;display:grid;place-items:center;cursor:pointer}
+.pinbox .eye:hover{color:var(--fg);background:var(--surface-2)}
+.pinbox .eye svg{width:20px;height:20px}
+@media(max-width:860px){
+  .auth2{grid-template-columns:1fr}
+  .authhero{padding:24px 20px 26px;gap:16px}
+  .authhero .mid h2{font-size:28px;max-width:none}
+  .authhero p,.authhero ul,.authhero::after{display:none}
+  .authhero::before{width:300px;height:300px;right:-110px;bottom:-170px}
+  .authside{align-items:start;padding-top:24px}
+}
+.demo{font-size:13px;color:var(--fg-2);border-top:1px dashed var(--line);padding-top:14px}
+.demo code{font-family:var(--f-mono);background:var(--surface-2);padding:1px 6px;border-radius:4px}
+.err{color:var(--ng);background:var(--ng-bg);padding:10px 12px;border-radius:8px;font-size:14px}
+.note{background:var(--hold-bg);color:var(--hold);padding:10px 14px;border-radius:8px;font-size:14px}
+
+/* ticker strip */
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.strip>div{padding:16px 20px;border-left:1px solid var(--line);min-width:0}
+.strip>div:first-child{border-left:0}
+.strip .n{font-family:var(--f-display);font-size:34px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums}
+.strip .l{font-size:13px;color:var(--fg-2)}
+
+/* process rows */
+.prow{display:grid;grid-template-columns:minmax(150px,200px) minmax(0,1fr) 120px;gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.prow:first-child{border-top:0}
+.prow .nm{display:flex;align-items:center;gap:10px;font-weight:500}
+.bar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--surface-2)}
+.bar span{display:block;height:100%}
+.bar .b-ok{background:var(--ok)} .bar .b-hold{background:var(--hold)} .bar .b-ng{background:var(--ng)}
+.prow .ct{font-size:13px;color:var(--fg-2);text-align:right;font-variant-numeric:tabular-nums}
+
+/* start buttons */
+.starts{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.start{display:flex;align-items:center;gap:14px;text-align:left;min-height:68px;padding:12px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.start:hover{border-color:var(--accent)}
+.start b{display:block;font-weight:600}
+.start small{color:var(--fg-3);font-size:13px}
+.start svg{width:18px;height:18px;margin-left:auto;color:var(--fg-3);flex:none}
+.grp{display:flex;flex-direction:column;gap:10px}
+.grp h3{display:flex;align-items:center;gap:10px}
+
+/* lists */
+.filters{display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr));gap:10px}
+.tblwrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);text-align:left;font-weight:600;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr[data-act="open"]{cursor:pointer}
+tr[data-act="open"]:hover td{background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:0}
+.cell2{display:flex;flex-direction:column;min-width:0}
+.cell2 small{color:var(--fg-3);font-size:13px}
+.cards{display:none;flex-direction:column;gap:10px}
+.card{display:flex;flex-direction:column;gap:6px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;text-align:left;width:100%}
+.card .r1{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.card .r2{display:flex;align-items:center;gap:8px;font-weight:500}
+.card .r3{font-size:13px;color:var(--fg-3);display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.empty{padding:36px 20px;text-align:center;color:var(--fg-2);display:flex;flex-direction:column;gap:6px;align-items:center}
+.vmark{display:inline-flex;align-items:center;gap:4px;color:var(--ok);font-size:13px;font-weight:500}
+.vmark svg{width:16px;height:16px}
+
+/* report form */
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.meas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.meas{display:flex;flex-direction:column;gap:8px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.meas[data-s="ng"]{border-color:var(--ng);background:var(--ng-bg)}
+.meas[data-s="ok"]{border-color:var(--ok)}
+.meas .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.meas .h label{font-weight:600}
+.meas .spec{font-size:12.5px;color:var(--fg-2);font-family:var(--f-mono);text-align:right}
+.meas .inp{display:flex;align-items:center;gap:8px}
+.meas .inp .unit{color:var(--fg-2);font-size:13px;white-space:nowrap}
+.meas .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.meas .pair span.sub{font-size:12px;color:var(--fg-3);display:block;margin-bottom:2px}
+.meas .foot{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chk{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:10px 16px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:0}
+.chk[data-s="ng"] .q{color:var(--ng);font-weight:600}
+.chk.miss{background:var(--hold-bg);border-radius:8px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;position:relative}
+.seg input{position:absolute;opacity:0;pointer-events:none;inset:0}
+.seg label{display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-weight:600;color:var(--fg-2);cursor:pointer;font-size:14px}
+.seg input:checked+label.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.seg input:checked+label.ng{background:var(--ng-bg);border-color:var(--ng);color:var(--ng)}
+.seg input:checked+label.na{background:var(--surface-2);border-color:var(--fg-3);color:var(--fg)}
+.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
+.seg .cell{position:relative}
+.seg .cell input{inset:0;width:100%;height:100%;margin:0}
+.seg.two{grid-template-columns:repeat(2,1fr)}
+.totalbox{min-height:44px;display:flex;align-items:center;padding:0 12px;border:1px dashed var(--line);border-radius:8px;font-family:var(--f-mono);font-weight:500;background:var(--surface-2);overflow-wrap:anywhere}
+.qtygrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.qcell{padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+.qcell .n{font-size:26px;font-weight:500;line-height:1.2;overflow-wrap:anywhere}
+.formbar{position:sticky;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--line);margin-inline:calc(-1*max(32px,env(safe-area-inset-left,0px)));padding:12px max(32px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(32px,env(safe-area-inset-left,0px));display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.autores{display:flex;flex-direction:column;gap:2px;min-width:0}
+.autores b{font-weight:600}
+
+/* modal */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:40;display:flex;justify-content:flex-end}
+.sheet{width:min(660px,100%);height:100%;background:var(--surface);overflow-y:auto;padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px;overscroll-behavior:contain}
+.sheet:focus{outline:none}
+.shead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px 16px}
+.meta dt{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.meta dd{margin:2px 0 0;font-weight:500;overflow-wrap:anywhere}
+.dl{display:flex;flex-direction:column}
+.dl .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center}
+.dl .row:last-child{border-bottom:0}
+.dl .row .sp{font-size:12.5px;color:var(--fg-3);font-family:var(--f-mono)}
+.dl .row .v{font-family:var(--f-mono);font-weight:500;text-align:right}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px}
+.pgrid label.opt{display:flex;align-items:center;gap:10px;min-height:40px}
+.pgrid input{width:20px;height:20px;accent-color:var(--accent)}
+
+.rowbtn{all:unset;display:block;width:100%;cursor:pointer;box-sizing:border-box}
+.rowbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.draftbar{display:flex;gap:8px;align-items:stretch;overflow-x:auto;max-width:100%;min-width:0;padding-bottom:6px;scrollbar-width:thin}
+.dtab{display:flex;align-items:stretch;flex:none;max-width:230px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.dtab.on{border-color:var(--accent);background:var(--accent-soft)}
+.dtab .dsel{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 12px;min-height:46px;min-width:0}
+.dtab .tx{display:flex;flex-direction:column;min-width:0}
+.dtab .tx b{font-weight:600;font-size:14px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtab .dsub{font-family:var(--f-mono);font-size:12px;color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.dtab .dx{all:unset;box-sizing:border-box;cursor:pointer;display:grid;place-items:center;min-width:40px;padding:0 4px;color:var(--fg-3);border-radius:0 9px 9px 0}
+.dtab .dx:hover{color:var(--fg)}
+.dtab .dx.sure{color:var(--ng);font-size:13px;font-weight:600;padding:0 10px}
+.dtab .dx svg{width:16px;height:16px}
+.dtab .dsel:focus-visible,.dtab .dx:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.draftbar>.btn{flex:none}
+.hist{display:flex;flex-direction:column;gap:10px}
+.hitem{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface-2);min-width:0}
+.hitem .hh{display:flex;justify-content:space-between;flex-wrap:wrap;gap:2px 12px;font-size:14px}
+.hitem .hr{margin:6px 0;overflow-wrap:anywhere;font-size:14px}
+.hch{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.hch li{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr);gap:4px 12px;font-size:14px}
+.hch .hl{color:var(--fg-2)}
+.hch .hv{overflow-wrap:anywhere}
+.hch .hv s{color:var(--fg-3)}
+@media (max-width:520px){.hch li{grid-template-columns:minmax(0,1fr)}}
+.monnav{display:flex;align-items:center;gap:8px}
+.monnav .btn{min-width:40px;padding:0 10px;font-size:18px;line-height:1}
+.monlbl{min-width:132px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:19px;flex:none;letter-spacing:.02em}
+.avatar.sm{width:34px;height:34px;font-size:14px}
+.meter{display:block;width:64px;height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;flex:none}
+.meter span{display:block;height:100%;background:var(--ok);border-radius:99px}
+.meter.w{width:96px;height:8px}
+.chips{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sprog{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.slog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.slog li{padding:10px 0;border-top:1px solid var(--line)}
+.slog li:first-child{border-top:0}
+.sl1{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.chart{width:100%;height:auto;display:block}
+.chart .cb{fill:var(--accent)}
+.chart .cb.z{fill:var(--line)}
+.chart .cg{stroke:var(--line);stroke-width:1}
+.chart .ctx{fill:var(--fg-3);font-size:11px;font-family:var(--f-mono)}
+tr[data-act="profopen"]{cursor:pointer}
+tr[data-act="profopen"]:hover td{background:var(--surface-2)}
+.strip .n{overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:10px;z-index:60;font-weight:500;max-width:min(92vw,480px);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.toast.err{background:var(--ng);color:#fff}
+
+@media (max-width:859px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .side{display:none}
+  .top{display:flex;position:sticky;top:env(safe-area-inset-top,0px);z-index:11;background:var(--bg);align-items:center;justify-content:space-between;gap:12px;min-height:56px;border-bottom:1px solid var(--line);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .top .brand{font-size:19px;padding:6px 12px 6px 9px}.top .brand svg{width:24px;height:24px}
+  .top .who{display:flex;align-items:center;gap:10px;min-width:0}
+  .top .who span{font-size:14px;color:var(--fg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:34vw}
+  .main{padding-block:20px calc(92px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));gap:20px}
+  .tabbar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+  .tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:54px;background:none;border:0;color:var(--fg-3);font-size:12px;font-weight:500;border-radius:8px;position:relative}
+  .tabbar button svg{width:22px;height:22px}
+  .tabbar button[aria-current="page"]{color:var(--accent);font-weight:600}
+  .tabbar .badge{position:absolute;top:4px;left:calc(50% + 8px);font-size:11px;font-family:var(--f-mono);background:var(--hold);color:var(--bg);border-radius:99px;padding:0 6px}
+  .is-form .tabbar{display:none}
+  .is-form .main{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+  h1{font-size:26px}
+  .strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .strip>div:nth-child(3){border-left:0}
+  .strip>div:nth-child(n+3){border-top:1px solid var(--line)}
+  .prow{grid-template-columns:minmax(0,1fr) auto;gap:8px 12px}
+  .prow .bar{grid-column:1/-1;grid-row:2}
+  .filters{grid-template-columns:1fr 1fr}
+  .filters .fld:first-child{grid-column:1/-1}
+  .tblwrap{display:none}
+  .cards{display:flex}
+  .chk{grid-template-columns:minmax(0,1fr)}
+  .formbar{margin-inline:calc(-1*max(16px,env(safe-area-inset-left,0px)));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .sheet{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:520px){.qcell{padding:10px}.qcell .n{font-size:19px}}
+@media (prefers-reduced-motion:no-preference){
+  .btn,.start,.card,.nav button{transition:background-color .12s,border-color .12s,filter .12s}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="app"></div>
+<div id="modalRoot"></div>
+<div id="toastRoot" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ================= KONFIGURASI PROSES =================
+   Spesifikasi di bawah adalah nilai awal. Sesuaikan min / max / tol
+   dengan standar pabrik Anda. */
+const GROUPS=[
+  {id:'printing',label:'Printing',items:['printing']},
+  {id:'laminasi',label:'Laminasi',items:['lam_dry','lam_ext']},
+  {id:'slitting',label:'Slitting',items:['slit','rewind']},
+  {id:'bag',label:'Bag Making',items:['bag','spout']}
+];
+const PROC={
+  printing:{label:'Printing',code:'PRT',group:'printing',
+    measures:[
+      {k:'visk',label:'Viskositas tinta',unit:'dtk',min:18,max:25},
+      {k:'suhu',label:'Suhu dryer',unit:'°C',min:50,max:80},
+      {k:'speed',label:'Kecepatan mesin',unit:'m/mnt'},
+      {k:'de',label:'Selisih warna (ΔE)',unit:'ΔE',max:3},
+      {k:'reg',label:'Deviasi registrasi',unit:'mm',max:0.3}],
+    checks:[
+      {k:'warna',label:'Warna sesuai standar / master'},
+      {k:'regis',label:'Registrasi antar warna rapi'},
+      {k:'teks',label:'Teks, logo, dan barcode terbaca jelas'},
+      {k:'cacat',label:'Tidak ada streak, dot, scumming, atau pinhole'},
+      {k:'treat',label:'Treatment film sesuai (dyne test)'},
+      {k:'unwind',label:'Arah unwinding sesuai spesifikasi'}]},
+  lam_dry:{label:'Dry Laminasi',code:'LMD',group:'laminasi',
+    measures:[
+      {k:'gsm',label:'Gramatur adhesive',unit:'g/m²',min:1.8,max:2.5},
+      {k:'oven',label:'Suhu oven',unit:'°C',min:60,max:85},
+      {k:'nip',label:'Tekanan nip',unit:'bar'},
+      {k:'bond',label:'Kekuatan ikat (bond)',unit:'N/15 mm',min:1.5}],
+    checks:[
+      {k:'mat',label:'Material dan layer sesuai order'},
+      {k:'mix',label:'Rasio adhesive : hardener sesuai'},
+      {k:'tunnel',label:'Tidak ada tunneling atau gelembung udara'},
+      {k:'wrinkle',label:'Tidak ada kerut'},
+      {k:'regis',label:'Registrasi cetak terjaga'},
+      {k:'solv',label:'Tidak ada bau solvent berlebih'},
+      {k:'roll',label:'Gulungan rata, label sesuai'}]},
+  lam_ext:{label:'Ekstrusi Laminasi',code:'LME',group:'laminasi',
+    measures:[
+      {k:'die',label:'Suhu die',unit:'°C',min:285,max:325},
+      {k:'coat',label:'Tebal coating PE',unit:'µm',min:12,max:25},
+      {k:'chill',label:'Suhu chill roll',unit:'°C',min:15,max:30},
+      {k:'bond',label:'Kekuatan ikat (bond)',unit:'N/15 mm',min:1},
+      {k:'speed',label:'Kecepatan mesin',unit:'m/mnt'}],
+    checks:[
+      {k:'primer',label:'Primer / corona treatment OK'},
+      {k:'pin',label:'Tidak ada pinhole atau gel'},
+      {k:'wrinkle',label:'Tidak ada kerut'},
+      {k:'width',label:'Lebar coating sesuai'},
+      {k:'die',label:'Die bersih, tidak ada garis'},
+      {k:'roll',label:'Gulungan rata, label sesuai'}]},
+  slit:{label:'Slitting',code:'SLT',group:'slitting',kind:'log',unit:'roll',noDus:true,sizeLabel:'Ukuran potong (mm) x meter roll',sizePh:'150 x 500',machines:['YODEN 3','YODEN 4','YODEN 5','TITAN 1','TITAN 2','TOSHIN 2','TOSHIN 3','SCIAVI','CMR'],measures:[],checks:[]},
+  rewind:{label:'Rewind',code:'RWD',group:'slitting',kind:'log',unit:'roll',noDus:true,sub:['Rewind Internal Reject','Rewind External Reject'],sizeLabel:'Ukuran potong (mm) x meter roll',sizePh:'150 x 500',machines:['YODEN 3','YODEN 4','YODEN 5','TITAN 1','TITAN 2','TOSHIN 2','TOSHIN 3','SCIAVI','CMR'],measures:[],checks:[]},
+  bag:{label:'Bag Making',code:'BAG',group:'bag',kind:'log',unit:'pcs',measures:[],checks:[]},
+  spout:{label:'Spout',code:'SPT',group:'bag',kind:'log',unit:'pcs',measures:[],checks:[]}
+};
+const IDS=Object.keys(PROC);
+const DISP={lulus:{t:'Lulus',c:'ok'},hold:{t:'Hold',c:'hold'},reject:{t:'Reject',c:'ng'}};
+/* Tindakan SPV ke atas untuk produk label biru / merah */
+const TINDAKAN={diterima:{t:'Diterima',c:'ok',d:'lulus'},sortir:{t:'Sortir',c:'hold',d:'hold'},dimusnahkan:{t:'Dimusnahkan',c:'ng',d:'reject'}};
+const MACHINES=['SBM 600','ST 30-2','TOTANI 1','TOTANI 2','TOTANI 4','IMAC'];
+const toInt=s=>{const d=String(s==null?'':s).replace(/\D/g,'');return d===''?NaN:parseInt(d,10)};
+const fmtInt=n=>(n==null||isNaN(n))?'—':Number(n).toLocaleString('id-ID');
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const qtyCell=r=>r.qp==null?'—':fmtInt(r.qp+(r.qn||0))+(r.qn>0?' <span style="color:var(--ng)">('+fmtInt(r.qn)+' NG)</span>':'');
+
+/* ================= UTIL ================= */
+const $=(s,r)=>(r||document).querySelector(s);
+const $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const fmtNum=v=>(v==null||v===''||isNaN(v))?'—':String(+(+v).toFixed(3)).replace('.',',');
+const parseNum=s=>{if(s==null)return NaN;s=String(s).trim().replace(',','.');return s===''?NaN:Number(s)};
+const fmtT=iso=>{const d=new Date(iso);return d.toLocaleDateString('id-ID',{day:'numeric',month:'short'})+', '+pad(d.getHours())+'.'+pad(d.getMinutes())};
+const fmtFull=iso=>{const d=new Date(iso);return d.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+', '+pad(d.getHours())+'.'+pad(d.getMinutes())};
+const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
+const shiftOf=d=>{const h=d.getHours();return h>=7&&h<15?'1':h>=15&&h<23?'2':'3'};
+const h53=(str,seed)=>{seed=seed||0;let h1=0xdeadbeef^seed,h2=0x41c6ce57^seed;for(let i=0,ch;i<str.length;i++){ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507);h1^=Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507);h2^=Math.imul(h1^(h1>>>13),3266489909);return (4294967296*(2097151&h2)+(h1>>>0)).toString(16)};
+const pinHash=(id,pin)=>h53(id+':'+pin);
+const uid=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const ICON={
+  home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',
+  plus:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 12v6M9 15h6"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  users:'<path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 20v-2a4 4 0 0 0-3-3.9M16 2.1a4 4 0 0 1 0 7.8"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  x:'<path d="M18 6L6 18M6 6l12 12"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  copy:'<path d="M9 9h11v11H9zM5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+  download:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+  search:'<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16M21 21l-4.3-4.3"/>',
+  arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  alert:'<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  edit:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  mail:'<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M22 6l-10 7L2 6"/>',
+  shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'
+};
+const ic=n=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+ICON[n]+'</svg>';
+const LOGO='<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="8" fill="currentColor"/><path d="M11.5 14.5v9.5" fill="none" stroke-width="3.4" stroke-linecap="round" style="stroke:var(--accent-fg)"/><path d="M17 20.5l3.2 3.2 6.2-7.6" fill="none" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--accent-fg)"/><circle cx="11.5" cy="8.6" r="2.1" style="fill:var(--accent-fg)"/></svg>';
+const chip=(c,t)=>'<span class="chip '+c+'"><i></i>'+esc(t)+'</span>';
+const dispChip=d=>{const x=DISP[d]||DISP.hold;return chip(x.c,x.t)};
+
+/* ================= STATE & STORAGE ================= */
+const S={mode:'init',sf:{q:'',st:'open'},dm:null,drafts:[],activeDraft:null,domDraft:null,confirmDraft:null,users:[],reports:[],memos:[],memoReads:[],memoId:null,tf:{q:'',proc:'all',st:'all',range:'30'},usersLoaded:false,meId:null,view:'dash',formProc:null,dispTouched:false,
+  detailId:null,confirmDel:null,confirmSdel:null,modal:null,userEdit:null,dbError:false,canDownload:false,
+  filters:{q:'',proc:'all',disp:'all',range:'7'}};
+let dbh=null,dlh=null;
+const LS={
+  get(k){try{return localStorage.getItem(k)}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,v)}catch(e){}},
+  del(k){try{localStorage.removeItem(k)}catch(e){}}
+};
+function loadLocal(){
+  try{S.users=JSON.parse(LS.get('lqc.users')||'[]')}catch(e){S.users=[]}
+  try{S.reports=JSON.parse(LS.get('lqc.reports')||'[]')}catch(e){S.reports=[]}
+  try{S.memos=JSON.parse(LS.get('lqc.memos')||'[]')}catch(e){S.memos=[]}
+  try{S.memoReads=JSON.parse(LS.get('lqc.memoReads')||'[]')}catch(e){S.memoReads=[]}
+}
+function persistLocal(){LS.set('lqc.users',JSON.stringify(S.users));LS.set('lqc.reports',JSON.stringify(S.reports));LS.set('lqc.memos',JSON.stringify(S.memos));LS.set('lqc.memoReads',JSON.stringify(S.memoReads))}
+function sortCol(c){if(c==='reports'||c==='memos')S[c].sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}
+function sortReports(){S.reports.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)))}
+async function put(col,doc){
+  const id=doc.id,body=Object.assign({},doc);delete body.id;
+  if(dbh)await dbh.collection(col).doc(id).set(body);
+  const arr=S[col],i=arr.findIndex(x=>x.id===id);
+  if(i>=0)arr[i]=doc;else arr.push(doc);
+  sortCol(col);
+  if(!dbh)persistLocal();
+  onData();
+}
+async function remove(col,id){
+  if(dbh)await dbh.collection(col).doc(id).delete();
+  S[col]=S[col].filter(x=>x.id!==id);
+  if(!dbh)persistLocal();
+  onData();
+}
+function errMsg(e){
+  const c=e&&e.code;
+  if(c==='invalid_argument')return 'Anda hanya punya akses baca. Minta akses Kontributor ke pemilik halaman.';
+  if(c==='quota_exceeded')return 'Penyimpanan penuh. Hapus laporan lama atau hubungi pemilik halaman.';
+  if(c==='resource_exhausted')return 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.';
+  return 'Gagal menyimpan. Periksa koneksi lalu coba lagi.';
+}
+async function safe(fn){try{await fn();return true}catch(e){toast(errMsg(e),true);return false}}
+
+/* Penyimpanan online (Supabase, lewat REST) untuk dipakai di GitHub Pages. Aktif jika config.js diisi. */
+function makeSupabase(cfg){
+  const base=String(cfg.supabaseUrl).replace(/\/+$/,'')+'/rest/v1/docs';
+  const H={apikey:cfg.supabaseKey};
+  if(/^eyJ/.test(cfg.supabaseKey))H.Authorization='Bearer '+cfg.supabaseKey;
+  const netErr=()=>{const e=new Error('net');e.code='network';return e};
+  let lastWrite=0;
+  async function fetchAll(col){
+    let out=[],from=0;
+    for(;;){
+      const res=await fetch(base+'?col=eq.'+encodeURIComponent(col)+'&select=id,data,updated_at&order=id.asc&limit=1000&offset='+from,{headers:H});
+      if(!res.ok)throw netErr();
+      const rows=await res.json();out=out.concat(rows);
+      if(rows.length<1000)break;from+=1000;
+    }
+    return out;
+  }
+  return {collection(col){return {
+    onSnapshot(cb,onErr){
+      let sig=null;
+      const tick=async()=>{
+        if(document.hidden&&sig!==null)return;
+        const t0=Date.now();
+        try{
+          const rows=await fetchAll(col);
+          if(lastWrite>=t0)return;
+          const mx=rows.reduce((a,r)=>r.updated_at>a?r.updated_at:a,'');
+          const sg=rows.length+'|'+mx;
+          if(sg===sig)return;
+          sig=sg;
+          cb({docs:rows.map(r=>({id:r.id,data:()=>r.data||{}}))});
+        }catch(e){if(sig===null){sig='';onErr&&onErr(e)}}
+      };
+      tick();setInterval(tick,6000);
+      document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
+    },
+    doc(id){return {
+      async set(body){
+        const res=await fetch(base+'?on_conflict=col,id',{method:'POST',headers:Object.assign({'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},H),body:JSON.stringify({col,id,data:body,updated_at:new Date().toISOString()})});
+        lastWrite=Date.now();
+        if(!res.ok)throw netErr();
+      },
+      async delete(){
+        const res=await fetch(base+'?col=eq.'+encodeURIComponent(col)+'&id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:H});
+        lastWrite=Date.now();
+        if(!res.ok)throw netErr();
+      }
+    }}
+  }}};
+}
+function downloadText(filename,text){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/csv;charset=utf-8'}));a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+}
+async function init(){
+  render();
+  let db=null,dl=null;
+  try{if(window.claude&&window.claude.use){db=await window.claude.use('db');dl=await window.claude.use('downloads')}}catch(e){}
+  const cfg=window.IQC_CONFIG;
+  if(!db&&cfg&&cfg.supabaseUrl&&cfg.supabaseKey){db=makeSupabase(cfg);S.remote=true}
+  dbh=db;dlh=dl;S.canDownload=!!dl||!!S.remote;
+  if(db){
+    S.mode='db';
+    db.collection('users').onSnapshot(s=>{S.users=s.docs.map(d=>Object.assign({id:d.id},d.data()));S.usersLoaded=true;onData()},fail);
+    db.collection('reports').onSnapshot(s=>{S.reports=s.docs.map(d=>Object.assign({id:d.id},d.data()));sortReports();onData()},fail);
+    db.collection('memos').onSnapshot(s=>{S.memos=s.docs.map(d=>Object.assign({id:d.id},d.data()));sortCol('memos');onData()},fail);
+    db.collection('memoReads').onSnapshot(s=>{S.memoReads=s.docs.map(d=>Object.assign({id:d.id},d.data()));onData()},fail);
+  }else{
+    S.mode='local';loadLocal();S.usersLoaded=true;
+  }
+  S.meId=LS.get('lqc.me');
+  loadDrafts();
+  render();
+}
+function fail(){S.dbError=true;S.usersLoaded=true;render()}
+function getMe(){return S.users.find(u=>u.id===S.meId)||null}
+const ROLES={
+  viewer:{t:'Hanya Melihat',r:0},
+  operator:{t:'Operator',r:1},
+  qass:{t:'QC Ass SPV',r:2},
+  spv:{t:'QC SPV',r:2},
+  qam:{t:'QC AM',r:2},
+  qm:{t:'QC M',r:2},
+  admin:{t:'Koordinator / Admin',r:3}
+};
+const ROLE_ORDER=['operator','viewer','qass','spv','qam','qm','admin'];
+const rankOf=u=>u?(ROLES[u.role]||ROLES.operator).r:0;
+const isAdmin=()=>rankOf(getMe())>=3;
+const isSpv=()=>rankOf(getMe())>=2;
+const canCreate=()=>{const m=getMe();return !!m&&m.role==='operator'};
+const isViewer=()=>{const m=getMe();return !!m&&m.role==='viewer'};
+const roleChip=u=>chip(rankOf(u)>=3?'info':rankOf(u)>=2?'ok':'mute',(ROLES[u.role]||ROLES.operator).t);
+const roleOptions=cur=>ROLE_ORDER.map(k=>'<option value="'+k+'"'+((cur||'operator')===k?' selected':'')+'>'+ROLES[k].t+'</option>').join('');
+const procsText=u=>u.role==='viewer'?'Semua proses, hanya melihat':u.role!=='operator'?'Semua proses':(u.procs&&u.procs.length?u.procs.filter(p=>PROC[p]).map(p=>PROC[p].label).join(', '):'Belum ada akses');
+const roleNote=r=>r==='admin'?'Koordinator / Admin: akses semua proses, tindakan tolakan, memorandum, dan kelola akun.':r==='viewer'?'Hanya Melihat: hanya bisa membuka menu Laporan In-Line untuk membaca laporan semua proses. Tidak bisa membuat, mengubah, atau memberi tindakan.':(ROLES[r]&&ROLES[r].r>=2?ROLES[r].t+': akses semua proses, memberi tindakan tolakan, dan membuat memorandum untuk operator. Hak akses sama untuk QC Ass SPV, QC SPV, QC AM, dan QC M.':'');
+function allowedProcs(){const m=getMe();if(!m)return[];return (rankOf(m)>=2||m.role==='viewer')?IDS.slice():(m.procs||[]).filter(p=>PROC[p])}
+/* tolakan = laporan dengan produk Not Pass / di luar spesifikasi */
+function isTolakan(r){const P=PROC[r.proc];if(!P)return false;if(P.kind==='log')return (r.qn>0)||r.kts==='ada';return r.auto==='ng'||r.disp!=='lulus'}
+const ACT_GROUPS=['bag','slitting'];
+const canAct=r=>!!PROC[r.proc]&&ACT_GROUPS.includes(PROC[r.proc].group);
+const unitOf=r=>{const P=PROC[r&&r.proc];return (P&&P.unit)||'pcs'};
+const plabel=(r,P)=>(r&&r.sub)||((P||PROC[r&&r.proc]||{}).label)||(r&&r.proc)||'';
+function sumUnits(rs,fn){const m={};rs.forEach(r=>{const u=unitOf(r);m[u]=(m[u]||0)+(fn(r)||0)});const k=Object.keys(m).filter(u=>m[u]);return k.length?k.map(u=>fmtInt(m[u])+' '+u).join(' · '):'0'}
+const tolakanState=r=>!canAct(r)?'na':(r.tindakan||'wait');
+const sortirList=()=>visibleReports().filter(r=>canAct(r)&&isTolakan(r)&&(!r.tindakan||r.tindakan==='sortir'));
+const showSortir=()=>{const me=getMe();return !!me&&me.role!=='viewer'&&(isSpv()||allowedProcs().some(x=>PROC[x]&&ACT_GROUPS.includes(PROC[x].group)))};
+const canSortir=r=>{const me=getMe();return !!me&&me.role!=='viewer'&&canAct(r)&&allowedProcs().includes(r.proc)&&(!r.tindakan||r.tindakan==='sortir')};
+const waitList=()=>visibleReports().filter(r=>isTolakan(r)&&canAct(r)&&!r.tindakan);
+function causeOf(r){const P=PROC[r.proc];if(!P)return '—';if(P.kind==='log')return r.defect||'—';return evalData(P,{vals:r.vals||{},targets:r.targets||{},checks:r.checks||{}}).bad.join(', ')||'—'}
+const PRIO={biasa:{t:'Biasa',c:'mute'},penting:{t:'Penting',c:'hold'}};
+const isRead=(m,uid)=>S.memoReads.some(x=>x.memoId===m.id&&x.userId===uid);
+const memoVisible=m=>{const me=getMe();return !!me&&(isSpv()||(m.toIds||[]).includes(me.id))};
+const myMemos=()=>S.memos.filter(memoVisible);
+const unreadCount=()=>{const me=getMe();if(!me||isSpv())return 0;return S.memos.filter(m=>(m.toIds||[]).includes(me.id)&&!isRead(m,me.id)).length};
+function toLabel(m){const names=m.toNames||[];const ops=S.users.filter(u=>u.role==='operator').length;if(names.length>1&&names.length===ops)return 'Semua operator';if(names.length>2)return names.slice(0,2).join(', ')+' +'+(names.length-2);return names.join(', ')||'—'}
+function visibleReports(){const a=allowedProcs();return S.reports.filter(r=>a.includes(r.proc))}
+function onData(){
+  if(S.usersLoaded&&S.meId&&!getMe()){logout(true);return}
+  const ae0=document.activeElement;
+  if(ae0&&ae0.closest&&ae0.closest('#modalRoot')&&(S.detailId||S.modal||S.memoId)){updateChrome();return}
+  if(S.view==='form'||S.modal==='user'||S.modal==='memo'){updateChrome();return}
+  const a=document.activeElement;
+  if(S.view==='list'&&!S.detailId&&a&&a.id==='fq'){const rs=$('#results');if(rs)rs.innerHTML=resultsHTML();updateChrome();return}
+  if(S.view==='sortir'&&!S.detailId&&a&&a.id==='sq'){const rs=$('#sresults');if(rs)rs.innerHTML=sResultsHTML();updateChrome();return}
+  if(S.view==='tolakan'&&!S.detailId&&a&&a.id==='tq'){const rs=$('#tresults');if(rs)rs.innerHTML=tResultsHTML();updateChrome();return}
+  render();
+}
+function logout(silent){S.meId=null;LS.del('lqc.me');S.drafts=[];S.activeDraft=null;S.domDraft=null;S.confirmDraft=null;S.view='dash';S.detailId=null;S.modal=null;render();renderModal();if(!silent)window.scrollTo(0,0)}
+
+/* ================= EVALUASI ================= */
+function mStatus(m,v,t){
+  const x=typeof v==='number'?v:parseNum(v);
+  if(isNaN(x))return 'empty';
+  if(m.target){const tt=typeof t==='number'?t:parseNum(t);if(isNaN(tt))return 'empty';return Math.abs(x-tt)<=m.tol+1e-9?'ok':'ng'}
+  if(m.min!=null&&x<m.min)return 'ng';
+  if(m.max!=null&&x>m.max)return 'ng';
+  return 'ok';
+}
+function specText(m){
+  if(m.target)return 'Target ±'+fmtNum(m.tol)+' '+m.unit;
+  if(m.min!=null&&m.max!=null)return fmtNum(m.min)+'–'+fmtNum(m.max)+' '+m.unit;
+  if(m.min!=null)return 'min '+fmtNum(m.min)+' '+m.unit;
+  if(m.max!=null)return 'maks '+fmtNum(m.max)+' '+m.unit;
+  return 'Dicatat';
+}
+function evalData(P,d){
+  const bad=[];let missing=0;
+  P.measures.forEach(m=>{const s=mStatus(m,d.vals[m.k],d.targets[m.k]);if(s==='ng')bad.push(m.label);if(s==='empty')missing++});
+  P.checks.forEach(c=>{const v=d.checks[c.k];if(v==='ng')bad.push(c.label);if(!v)missing++});
+  return {bad,missing};
+}
+
+/* ================= RENDER: ROOT ================= */
+function render(){
+  if(S.view==='form'&&S.domDraft&&S.domDraft===S.activeDraft&&$('#rform'))captureDraft();
+  const app=$('#app');
+  if(!S.usersLoaded){app.innerHTML='<div class="auth"><div class="authcard"><div class="brand">'+LOGO+'i-QC</div><p class="muted">Memuat data…</p></div></div>';return}
+  if(S.dbError&&!S.users.length){app.innerHTML='<div class="auth"><div class="authcard panel pad"><h2>Data tidak bisa dimuat</h2><p class="muted">Koneksi ke penyimpanan terputus. Muat ulang halaman ini.</p></div></div>';return}
+  if(!S.users.length){app.innerHTML=setupHTML();return}
+  const me=getMe();
+  if(!me){app.innerHTML=loginHTML();return}
+  if(me.role==='viewer')S.view='list';
+  if(S.view==='form'){const d=curDraft();if(!(d&&PROC[d.proc]&&allowedProcs().includes(d.proc)&&(canCreate()||d.editId))){S.view=canCreate()?'new':'list';if(S.view==='list')S.formProc=null}}
+  if(S.view==='new'&&!canCreate())S.view='dash'
+  app.innerHTML=shellHTML(me);
+  renderModal();
+  if(S.view==='form')restoreDraft();
+}
+function updateChrome(){
+  $$('[data-badge]').forEach(el=>{const b=badgeVal(el.dataset.badge);el.textContent=b;el.hidden=!b})
+}
+
+function localNote(){
+  if(S.mode==='local')return '<div class="note">Mode lokal: data hanya tersimpan di perangkat dan browser ini. Buka halaman ini lewat tautan bersama agar semua operator memakai data yang sama.</div>';
+  if(S.dbError)return '<div class="note">Koneksi data terputus. Muat ulang halaman agar perubahan terbaru tampil.</div>';
+  return '';
+}
+
+/* ================= AUTH ================= */
+const HERO='<aside class="authhero"><div class="brand">'+LOGO+'i-QC</div><div class="mid"><h2>Kualitas tercatat, di setiap proses.</h2><p>Laporan pengecekan in-line, tolakan, dan memorandum dalam satu tempat.</p></div><ul aria-label="Proses"><li>Printing</li><li>Laminasi</li><li>Slitting</li><li>Bag Making</li></ul></aside>';
+const EYE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+function pinField(id,name,ac,label){return '<div class="fld"><label for="'+id+'">'+label+'</label><div class="pinbox"><input class="in" id="'+id+'" name="'+name+'" type="password" inputmode="numeric" autocomplete="'+ac+'"><button type="button" class="eye" data-act="pinshow" data-for="'+id+'" aria-label="Tampilkan PIN">'+EYE+'</button></div></div>'}
+function loginHTML(){
+  const demo=S.users.filter(u=>u.demo);
+  return '<div class="auth2">'+HERO+'<main class="authside"><div class="authcard">'+
+   '<div><h1>Masuk</h1><p class="muted" style="margin-top:6px">Laporan pengecekan kualitas tiap proses produksi.</p></div>'+
+   localNote()+
+   '<form data-form="login" class="panel pad" style="display:flex;flex-direction:column;gap:14px" novalidate>'+
+     '<div class="fld"><label for="lu">Username</label><input class="in" id="lu" name="u" autocomplete="username" autocapitalize="none" spellcheck="false"></div>'+
+     pinField('lp','p','current-password','PIN')+
+     '<div id="loginErr" class="err" role="alert" hidden></div>'+
+     '<button class="btn pri" type="submit">Masuk</button>'+
+   '</form>'+
+   (demo.length?'<div class="demo">Akun contoh untuk mencoba: '+demo.map(u=>'<code>'+esc(u.username)+'</code>').join(' ')+'. PIN semuanya <code>1234</code>. Admin dapat menghapus akun contoh di menu Pengguna.</div>':'')+
+  '</div></main></div>';
+}
+function setupHTML(){
+  return '<div class="auth2">'+HERO+'<main class="authside"><div class="authcard">'+
+   '<div><h1>Siapkan akun admin</h1><p class="muted" style="margin-top:6px">Belum ada akun. Buat akun admin QC pertama, lalu tambahkan akun operator dan batasi proses yang boleh mereka buka.</p></div>'+
+   localNote()+
+   '<form data-form="setup" class="panel pad" style="display:flex;flex-direction:column;gap:14px" novalidate>'+
+     '<div class="fld"><label for="sn">Nama lengkap</label><input class="in" id="sn" name="name" autocomplete="name"></div>'+
+     '<div class="fld"><label for="su">Username</label><input class="in" id="su" name="u" autocapitalize="none" spellcheck="false" placeholder="huruf kecil, angka, titik"></div>'+
+     pinField('sp','p','new-password','PIN (4–6 angka)')+
+     '<div id="setupErr" class="err" role="alert" hidden></div>'+
+     '<button class="btn pri" type="submit">Buat akun admin</button>'+
+   '</form></div></main></div>';
+}
+function showErr(id,msg){const el=$('#'+id);if(!el)return;el.textContent=msg;el.hidden=false}
+async function doLogin(f){
+  const name=f.elements['u'].value.trim().toLowerCase(),pin=f.elements['p'].value.trim();
+  const u=S.users.find(x=>String(x.username).toLowerCase()===name);
+  if(!u||u.pin!==pinHash(u.id,pin)){showErr('loginErr','Username atau PIN salah.');return}
+  S.meId=u.id;LS.set('lqc.me',u.id);loadDrafts();S.view='dash';render();window.scrollTo(0,0);
+}
+async function doSetup(f){
+  const name=f.elements['name'].value.trim(),un=f.elements['u'].value.trim().toLowerCase(),pin=f.elements['p'].value.trim();
+  if(!name)return showErr('setupErr','Isi nama lengkap.');
+  if(!/^[a-z0-9._-]{3,20}$/.test(un))return showErr('setupErr','Username 3–20 karakter: huruf kecil, angka, titik, strip, atau garis bawah.');
+  if(!/^\d{4,6}$/.test(pin))return showErr('setupErr','PIN harus 4–6 angka.');
+  const id=uid('u');
+  const ok=await safe(()=>put('users',{id,name,username:un,pin:pinHash(id,pin),role:'admin',procs:[]}));
+  if(ok){S.meId=id;LS.set('lqc.me',id);loadDrafts();S.view='dash';render()}
+}
+
+/* ================= SHELL ================= */
+const SHORT={new:'Buat',list:'In-Line',memo:'Memo',sortir:'Sortir'};
+function badgeVal(k){
+  if(k==='tolakan')return isSpv()?waitList().length:0;
+  if(k==='sortir')return showSortir()?sortirList().filter(r=>sortSt(r)!=='selesai').length:0;
+  if(k==='memo')return unreadCount();
+  if(k==='new')return visibleDrafts().length;
+  return 0;
+}
+function shellHTML(me){
+  let nav=[['dash','Beranda','home']];
+  if(canCreate())nav.push(['new','Buat laporan','plus']);
+  nav.push(['list','Laporan In-Line','list']);
+  if(isSpv())nav.push(['tolakan','Tolakan','alert']);
+  if(showSortir())nav.push(['sortir','Progress Sortir','check']);
+  nav.push(['memo','Memorandum','mail']);
+  if(me.role==='admin')nav.push(['users','Pengguna','users']);
+  if(me.role==='viewer')nav=[['list','Laporan In-Line','list']];
+  const cur=S.view==='form'?(canCreate()?'new':'list'):S.view;
+  const bd=k=>{if(k!=='tolakan'&&k!=='memo'&&k!=='new'&&k!=='sortir')return '';const b=badgeVal(k);return '<span class="badge" data-badge="'+k+'"'+(b?'':' hidden')+'>'+b+'</span>'};
+  const btn=(n,short)=>'<button data-act="nav" data-v="'+n[0]+'"'+(cur===n[0]?' aria-current="page"':'')+'>'+ic(n[2])+'<span>'+((short&&SHORT[n[0]])||n[1])+'</span>'+bd(n[0])+'</button>';
+  const roleTxt=(ROLES[me.role]||ROLES.operator).t;
+  return '<div class="shell'+(S.view==='form'?' is-form':'')+'">'+
+   '<aside class="side"><div class="brand">'+LOGO+'i-QC</div>'+
+     '<nav class="nav" aria-label="Menu utama">'+nav.map(n=>btn(n,false)).join('')+'</nav>'+
+     '<div class="me"><div><b>'+esc(me.name)+'</b><span class="muted" style="font-size:13px">'+esc(roleTxt)+'</span></div>'+
+     '<button class="btn sm" data-act="logout">'+ic('logout')+'Keluar</button></div></aside>'+
+   '<div class="col">'+
+     '<header class="top"><div class="brand">'+LOGO+'i-QC</div><div class="who"><span>'+esc(me.name)+'</span><button class="btn sm" data-act="logout" aria-label="Keluar">'+ic('logout')+'</button></div></header>'+
+     '<main class="main" id="main">'+localNote()+viewHTML(me)+'</main>'+
+   '</div>'+
+   '<nav class="tabbar" aria-label="Menu utama">'+nav.map(n=>btn(n,true)).join('')+'</nav>'+
+  '</div>';
+}
+function viewHTML(me){
+  if(me.role==='viewer')return listHTML(me);
+  switch(S.view){
+    case 'new':return canCreate()?newHTML(me):dashHTML(me);
+    case 'form':{const d=curDraft();return d&&PROC[d.proc]?draftBarHTML()+editBannerHTML()+formHTML(d.proc,me):newHTML(me)}
+    case 'list':return listHTML(me);
+    case 'tolakan':return isSpv()?tolakanHTML(me):dashHTML(me);
+    case 'sortir':return showSortir()?sortirHTML(me):dashHTML(me);
+    case 'memo':return memoHTML(me);
+    case 'users':return me.role==='admin'?usersHTML(me):dashHTML(me);
+    default:return dashHTML(me);
+  }
+}
+
+/* ================= BERANDA ================= */
+function greet(){const h=new Date().getHours();return h>=4&&h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam'}
+function procBtn(p){
+  const P=PROC[p];
+  return '<button class="start g-'+P.group+'" data-act="newform" data-p="'+p+'"><span class="pdot"></span><span><b>'+esc(P.label)+'</b><small>'+(P.kind==='log'?'PR, kuantitas, dan KTS':P.measures.length+' pengukuran · '+P.checks.length+' pengecekan')+'</small></span>'+ic('arrow')+'</button>';
+}
+function groupsHTML(allowed){
+  let h='';
+  GROUPS.forEach(g=>{
+    const items=g.items.filter(i=>allowed.includes(i));
+    if(!items.length)return;
+    h+='<section class="grp g-'+g.id+'"><h3><span class="pdot"></span>'+esc(g.label)+'</h3><div class="starts">'+items.map(procBtn).join('')+'</div></section>';
+  });
+  return h;
+}
+function dashHTML(me){
+  const now=new Date(),vis=visibleReports();
+  const today=vis.filter(r=>new Date(r.createdAt)>=startOfDay(now));
+  const head='<div class="pagehead"><div><div class="eyebrow">'+esc(now.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'}))+' · Shift '+shiftOf(now)+'</div><h1>'+greet()+', '+esc(me.name.split(' ')[0])+'</h1></div></div>';
+  if(rankOf(me)<2){
+    const allowed=allowedProcs();
+    if(!allowed.length)return head+'<div class="panel empty"><b>Akun Anda belum punya akses proses</b><span>Minta admin QC menambahkan proses yang boleh Anda buka.</span></div>';
+    const mine=vis.filter(r=>r.operatorId===me.id).slice(0,5);
+    return head+memoBanner()+'<section class="grp"><h2>Mulai pengecekan</h2></section>'+groupsHTML(allowed)+
+      '<section><div class="sechead"><h2>Laporan terakhir saya</h2><button class="btn sm ghost" data-act="nav" data-v="list">Lihat semua</button></div>'+
+      (mine.length?'<div class="panel" style="padding:0 18px">'+mine.map(r=>'<button class="rowbtn" data-act="open" data-id="'+r.id+'">'+miniRow(r)+'</button>').join('')+'</div>':'<div class="panel empty">Belum ada laporan dari Anda. Pilih proses di atas untuk mulai.</div>')+'</section>';
+  }
+  const n=today.length,ok=today.filter(r=>r.disp==='lulus').length,hold=today.filter(r=>r.disp==='hold').length,rej=today.filter(r=>r.disp==='reject').length;
+  const strip='<div class="panel strip"><div><div class="n">'+n+'</div><div class="l">Laporan hari ini</div></div>'+
+    '<div><div class="n">'+(n?Math.round(ok/n*100)+'%':'—')+'</div><div class="l">Lulus</div></div>'+
+    '<div><div class="n" style="color:'+((hold+rej)?'var(--ng)':'inherit')+'">'+(hold+rej)+'</div><div class="l">Hold / reject</div></div>'+
+    '<div><div class="n" style="color:'+(waitList().length?'var(--hold)':'inherit')+'">'+waitList().length+'</div><div class="l">Tolakan menunggu tindakan</div></div></div>';
+  const dm=dmGet(),m0=new Date(dm.y,dm.m,1),m1=new Date(dm.y,dm.m+1,1),isCur=m0.getTime()===new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  const mrs=vis.filter(r=>{const t=new Date(r.createdAt);return t>=m0&&t<m1});
+  const mlabel=m0.toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  let rows='';
+  GROUPS.forEach(g=>g.items.forEach(p=>{
+    const rs=mrs.filter(r=>r.proc===p),t=rs.length;
+    const a=rs.filter(r=>r.disp==='lulus').length,b=rs.filter(r=>r.disp==='hold').length,c=rs.filter(r=>r.disp==='reject').length;
+    rows+='<div class="prow g-'+g.id+'"><div class="nm"><span class="pdot"></span>'+esc(PROC[p].label)+'</div>'+
+      '<div class="bar" role="img" aria-label="'+esc(PROC[p].label)+': '+a+' lulus, '+b+' hold, '+c+' reject">'+(t?'<span class="b-ok" style="width:'+a/t*100+'%"></span><span class="b-hold" style="width:'+b/t*100+'%"></span><span class="b-ng" style="width:'+c/t*100+'%"></span>':'')+'</div>'+
+      '<div class="ct">'+(t?'<b>'+t+'</b> laporan<br><span class="faint">'+Math.round(a/t*100)+'% lulus</span>':'Belum ada')+'</div></div>';
+  }));
+  const legend='<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--fg-2)">'+chip('ok','Lulus')+chip('hold','Hold')+chip('ng','Reject')+'</div>';
+  return head+strip+
+    '<section class="panel pad"><div class="sechead" style="flex-wrap:wrap;align-items:center"><h2>Hasil per proses</h2><div class="monnav"><button class="btn sm" data-act="dmon" data-d="-1" aria-label="Bulan sebelumnya">‹</button><b class="monlbl">'+esc(mlabel)+'</b><button class="btn sm" data-act="dmon" data-d="1" aria-label="Bulan berikutnya"'+(isCur?' disabled':'')+'>›</button></div></div><div style="margin-bottom:6px">'+legend+'</div>'+rows+'</section>'+
+    tolakanSection()+
+    '';
+}
+function memoBanner(){
+  const me=getMe(),un=S.memos.filter(m=>(m.toIds||[]).includes(me.id)&&!isRead(m,me.id));
+  if(!un.length)return '';
+  return '<div class="panel pad" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div style="min-width:0"><b>'+un.length+' memorandum baru</b><div class="muted" style="font-size:14px;overflow-wrap:anywhere">'+esc(un[0].subject)+'</div></div><button class="btn pri" data-act="nav" data-v="memo">'+ic('mail')+'Buka memorandum</button></div>';
+}
+function tolakanSection(){
+  const w=waitList();
+  return '<section><div class="sechead"><h2>Tolakan menunggu tindakan</h2><button class="btn sm ghost" data-act="nav" data-v="tolakan">Buka Tolakan</button></div>'+
+    (w.length?'<div class="panel" style="padding:0 18px">'+w.slice(0,5).map(r=>'<button class="rowbtn" data-act="open" data-id="'+r.id+'">'+miniRow(r)+'</button>').join('')+'</div>':'<div class="panel empty">Tidak ada tolakan yang menunggu tindakan.</div>')+'</section>';
+}
+function miniRow(r){
+  const P=PROC[r.proc]||{label:r.proc,group:'printing'};
+  return '<div class="g-'+P.group+'" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center">'+
+   '<div style="display:flex;align-items:center;gap:10px;min-width:0"><span class="pdot"></span><div class="cell2"><b style="font-weight:600">'+esc(P.label)+' · '+esc(r.wo||'-')+'</b><small>'+esc(r.product||'')+' · '+esc(r.operatorName||'')+' · '+fmtT(r.createdAt)+'</small></div></div>'+statusChip(r)+'</div>';
+}
+
+/* ================= DRAF PARALEL ================= */
+/* Operator bisa membuka beberapa laporan sekaligus. Isian tiap draf tersimpan otomatis di browser ini. */
+const MAXDRAFT=10;
+const DKEY=()=>'lqc.drafts.'+S.meId;
+const curDraft=()=>S.drafts.find(d=>d.id===S.activeDraft)||null;
+function visibleDrafts(){const a=allowedProcs(),c=canCreate();return S.drafts.filter(d=>PROC[d.proc]&&a.includes(d.proc)&&(c||d.editId))}
+function loadDrafts(){
+  S.drafts=[];S.activeDraft=null;S.domDraft=null;S.confirmDraft=null;
+  if(!S.meId)return;
+  try{
+    const o=JSON.parse(LS.get(DKEY())||'null');
+    if(o&&Array.isArray(o.drafts)){S.drafts=o.drafts.filter(d=>d&&d.id&&d.proc);S.activeDraft=S.drafts.some(d=>d.id===o.active)?o.active:(S.drafts[0]?S.drafts[0].id:null)}
+  }catch(e){S.drafts=[]}
+}
+function saveDrafts(){
+  if(!S.meId)return;
+  if(!S.drafts.length)LS.del(DKEY());else LS.set(DKEY(),JSON.stringify({drafts:S.drafts,active:S.activeDraft}));
+}
+function captureDraft(){
+  const f=$('#rform'),d=curDraft();
+  if(!f||!d||S.domDraft!==d.id)return;
+  const data={};
+  Array.from(f.elements).forEach(el=>{
+    if(!el.name||el.type==='button'||el.type==='submit')return;
+    if(el.type==='radio'){if(el.checked)data[el.name]=el.value}
+    else data[el.name]=el.value;
+  });
+  d.data=data;d.touched={disp:!!S.dispTouched,kts:!!S.ktsTouched};d.at=Date.now();
+}
+function restoreDraft(){
+  const f=$('#rform'),d=curDraft();
+  if(!f||!d)return;
+  const data=d.data||{};
+  Object.keys(data).forEach(k=>{
+    const el=f.elements[k];if(!el)return;
+    const list=el.tagName?[el]:Array.from(el);
+    if(!list.length)return;
+    if(list[0].type==='radio')list.forEach(r=>{r.checked=(r.value===data[k])});
+    else list[0].value=data[k];
+  });
+  S.dispTouched=!!(d.touched&&d.touched.disp);S.ktsTouched=!!(d.touched&&d.touched.kts);
+  S.domDraft=d.id;
+  if(S.confirmDraft===d.id){
+    $$('[data-act="cancelform"]').forEach(b=>{b.classList.add('danger');const tn=Array.from(b.childNodes).find(n=>n.nodeType===3);if(tn)tn.textContent='Ya, buang draf'});
+  }
+  updateForm();
+}
+function hasData(d){
+  const skip=['shift','date','disp','kts'];
+  return Object.keys(d.data||{}).some(k=>!skip.includes(k)&&String(d.data[k]).trim()!=='');
+}
+const draftSub=d=>d.editId?('Edit '+(d.editNo||'')):(((d.data&&d.data.wo)||'').trim()||'Belum diisi');
+function refreshTab(f){
+  const cd=curDraft(),el=$('.dtab.on .dsub');
+  if(el&&f.elements.wo&&!(cd&&cd.editId))el.textContent=f.elements.wo.value.trim()||'Belum diisi';
+}
+function newDraft(proc,seed){
+  const d={id:uid('d'),proc,data:seed||{},touched:{},at:Date.now()};
+  S.drafts.push(d);S.activeDraft=d.id;S.domDraft=null;S.confirmDraft=null;
+  return d;
+}
+function openDraft(id){
+  if(S.view==='form')captureDraft();
+  const d=S.drafts.find(x=>x.id===id);if(!d)return;
+  S.activeDraft=id;S.confirmDraft=null;S.view='form';
+  saveDrafts();render();window.scrollTo(0,0);
+}
+function removeDraft(id){
+  const i=S.drafts.findIndex(d=>d.id===id);if(i<0)return null;
+  const wasActive=S.activeDraft===id;
+  S.drafts.splice(i,1);S.confirmDraft=null;
+  let next=null;
+  if(wasActive){
+    const vis=visibleDrafts();
+    next=vis[Math.min(i,vis.length-1)]||null;
+    S.activeDraft=next?next.id:null;S.domDraft=null;
+  }
+  saveDrafts();
+  return next;
+}
+function askDiscard(id){
+  if(S.view==='form')captureDraft();
+  const d=S.drafts.find(x=>x.id===id);if(!d)return;
+  if(hasData(d)&&S.confirmDraft!==id){S.confirmDraft=id;saveDrafts();render();return}
+  const wasActive=S.activeDraft===id;
+  const next=removeDraft(id);
+  if(wasActive)S.view=next?'form':(canCreate()?'new':'list');
+  toast('Draf dibuang');render();window.scrollTo(0,0);
+}
+function afterSave(doc,did){
+  const wasActive=S.activeDraft===did;
+  const next=removeDraft(did);
+  const left=visibleDrafts().length;
+  toast('Laporan '+doc.wo+' tersimpan'+(left?'. '+left+' laporan lain masih terbuka.':''));
+  if(wasActive)S.view=next?'form':(isSpv()?'list':'dash');
+  render();window.scrollTo(0,0);
+}
+let dsT=null;
+function queueSave(){clearTimeout(dsT);dsT=setTimeout(()=>{if(S.view==='form'){captureDraft();saveDrafts()}},400)}
+function draftBarHTML(){
+  const ds=visibleDrafts();if(!ds.length)return '';
+  const tabs=ds.map(d=>{
+    const P=PROC[d.proc],on=d.id===S.activeDraft,sure=S.confirmDraft===d.id;
+    return '<div class="dtab g-'+P.group+(on?' on':'')+'"><button type="button" class="dsel" role="tab" aria-selected="'+on+'" data-act="draftgo" data-id="'+d.id+'"><span class="pdot"></span><span class="tx"><b>'+esc(P.label)+'</b><span class="dsub">'+esc(draftSub(d))+'</span></span></button>'+
+      '<button type="button" class="dx'+(sure?' sure':'')+'" data-act="draftx" data-id="'+d.id+'" aria-label="Buang draf '+esc(P.label)+'">'+(sure?'Buang?':ic('x'))+'</button></div>';
+  }).join('');
+  return '<div class="draftbar" role="tablist" aria-label="Laporan yang sedang diisi">'+tabs+
+    (canCreate()?'<button type="button" class="btn sm" data-act="draftadd">'+ic('plus')+'Laporan baru</button>'+
+    '<button type="button" class="btn sm" data-act="draftdup" title="Buat laporan baru dengan No. PR, produk, dan customer yang sama">'+ic('copy')+'Salin data produk</button>':'')+'</div>';
+}
+function resumeHTML(){
+  const ds=visibleDrafts();if(!ds.length)return '';
+  return '<section class="grp"><h3>Sedang diisi ('+ds.length+')</h3><div class="starts">'+ds.map(d=>{const P=PROC[d.proc];
+    return '<button class="start g-'+P.group+'" data-act="draftgo" data-id="'+d.id+'"><span class="pdot"></span><span><b>'+esc(P.label)+'</b><small>'+esc(draftSub(d))+' · lanjutkan</small></span>'+ic('arrow')+'</button>'}).join('')+'</div></section>';
+}
+
+/* ================= EDIT LAPORAN & RIWAYAT EDIT ================= */
+/* Operator boleh mengubah laporannya sendiri kapan saja. SPV ke atas boleh mengubah semua laporan.
+   Setiap perubahan butuh alasan dan dicatat di r.edits (siapa, kapan, alasan, nilai lama dan baru). */
+function canEditReport(r){
+  const me=getMe();
+  if(!me||!PROC[r.proc]||!allowedProcs().includes(r.proc))return false;
+  if(me.role==='viewer')return false;
+  if(isSpv())return true;
+  return r.operatorId===me.id;
+}
+const editedChip=r=>(r.edits&&r.edits.length)?chip('mute','Diedit'):'';
+const sortSt=r=>(r.sortir&&r.sortir.status)||'belum';
+function statusChip(r){
+  const t=r.tindakan&&TINDAKAN[r.tindakan];
+  if(t){
+    if(r.tindakan==='sortir'){const x=sortSt(r);if(x==='selesai')return chip('ok','Sortir selesai');if(x==='proses')return chip('hold','Sortir berjalan')}
+    return chip(t.c,t.t);
+  }
+  return dispChip(r.disp);
+}
+const isEditDraft=()=>{const d=curDraft();return !!(d&&d.editId)};
+function editBannerHTML(){
+  const d=curDraft();if(!d||!d.editId)return '';
+  const r=S.reports.find(x=>x.id===d.editId);
+  if(!r)return '<div class="note">Laporan yang diedit sudah dihapus. Buang draf ini.</div>';
+  return '<div class="note" style="display:flex;flex-direction:column;gap:2px"><b>Mengubah laporan '+esc(r.wo)+'</b><span>'+(r.tindakan?'Tindakan yang sudah diberikan tetap berlaku. ':'')+'Semua perubahan dan alasannya dicatat di riwayat edit.</span></div>';
+}
+function editReasonHTML(){
+  if(!isEditDraft())return '';
+  return '<section class="panel pad"><div class="sechead"><h2>Alasan perubahan</h2></div><div class="fld"><label for="f_reason">Alasan <span class="req">*</span></label><textarea class="in" id="f_reason" name="reason" placeholder="Contoh: salah ketik jumlah QC Pass"></textarea></div></section>';
+}
+function reportToFormData(r){
+  const P=PROC[r.proc],d={},ns=v=>v==null?'':String(v).replace('.',',');
+  if(P.kind==='log'){
+    Object.assign(d,{date:ymd(new Date(r.createdAt)),shift:r.shift||'1',wo:r.wo||'',product:r.product||'',customer:r.customer||'',size:r.size||'',sub:r.sub||'',machine:r.machine||'',op:r.op||'',dusOk:r.dusOk||'',dusNg:r.dusNg||'',qp:r.qp==null?'':String(r.qp),qn:r.qn==null?'':String(r.qn),kts:r.kts||'tidak',defect:r.defect||''});
+    if(r.cond)d.cond=r.cond;
+  }else{
+    Object.assign(d,{shift:r.shift||'1',wo:r.wo||'',product:r.product||'',customer:r.customer||'',machine:r.machine||'',batch:r.batch||'',disp:r.disp||'lulus',note:r.note||''});
+    P.measures.forEach(m=>{
+      if(r.vals&&r.vals[m.k]!=null)d['m_'+m.k]=ns(r.vals[m.k]);
+      if(m.target&&r.targets&&r.targets[m.k]!=null)d['t_'+m.k]=ns(r.targets[m.k]);
+    });
+    P.checks.forEach(c=>{const v=r.checks&&r.checks[c.k];if(v)d['c_'+c.k]=v});
+  }
+  return d;
+}
+const dv=v=>(v==null||v==='')?'—':(typeof v==='number'?fmtNum(v):String(v).trim()||'—');
+const CKL={ok:'OK',ng:'NG',na:'N/A'};
+function diffReport(P,a,b){
+  const out=[],add=(label,x,y)=>{const sx=dv(x),sy=dv(y);if(sx!==sy)out.push({label,from:sx,to:sy})};
+  const cond=v=>v==='ok'?'OK':v?'Tidak OK':'';
+  if(P.kind==='log'){
+    add('Tanggal',ymd(new Date(a.createdAt)),ymd(new Date(b.createdAt)));
+    [['shift','Shift'],['wo','No. PR'],['product','Nama produk'],['customer','Customer'],['sub','Jenis rewind'],['size',P.sizeLabel?'Ukuran potong':'Ukuran kantong'],['machine','Nama mesin'],['op','OP mesin']].forEach(x=>add(x[1],a[x[0]],b[x[0]]));
+    add('Kondisi mesin',cond(a.cond),cond(b.cond));
+    add('No. dus sudah diproses',a.dusOk,b.dusOk);add('No. dus QC Not Pass',a.dusNg,b.dusNg);
+    add('QC Pass ('+(P.unit||'pcs')+')',a.qp,b.qp);add('QC Not Pass ('+(P.unit||'pcs')+')',a.qn,b.qn);
+    add('KTS',a.kts==='ada'?'Ada':'Tidak ada',b.kts==='ada'?'Ada':'Tidak ada');
+    add('Keterangan defect',a.defect,b.defect);
+  }else{
+    [['shift','Shift'],['wo','No. PR'],['product','Produk'],['customer','Customer'],['machine','Mesin'],['batch','No. batch / roll']].forEach(x=>add(x[1],a[x[0]],b[x[0]]));
+    P.measures.forEach(m=>{
+      add(m.label+(m.unit?' ('+m.unit+')':''),(a.vals||{})[m.k],(b.vals||{})[m.k]);
+      if(m.target)add('Target '+m.label,(a.targets||{})[m.k],(b.targets||{})[m.k]);
+    });
+    P.checks.forEach(c=>add(c.label,CKL[(a.checks||{})[c.k]],CKL[(b.checks||{})[c.k]]));
+    add('Disposisi',(DISP[a.disp]||{}).t,(DISP[b.disp]||{}).t);
+    add('Catatan',a.note,b.note);
+  }
+  return out;
+}
+async function commitEdit(dr,doc,f,did){
+  const me=getMe(),box=$('#formErr');
+  const fail=m=>{box.textContent=m;box.hidden=false;box.scrollIntoView({block:'center',behavior:'smooth'})};
+  const latest=S.reports.find(x=>x.id===dr.editId);
+  if(!latest)return fail('Laporan ini sudah dihapus. Buang draf ini.');
+  if(!canEditReport(latest))return fail('Anda tidak lagi punya izin mengubah laporan ini.');
+  if((latest.edits||[]).length!==dr.base)return fail('Laporan ini baru saja diubah oleh orang lain. Buang draf ini, lalu buka laporan dan pilih Edit lagi.');
+  const reason=f.elements['reason']?f.elements['reason'].value.trim():'';
+  if(!reason)return fail('Isi alasan perubahan.');
+  const P=PROC[latest.proc],log=P.kind==='log',next=Object.assign({},latest);
+  const keys=log?['shift','wo','product','customer','machine','size','sub','op','cond','dusOk','dusNg','qp','qn','kts','defect']:['shift','wo','product','customer','machine','batch','vals','targets','checks','note'];
+  keys.forEach(k=>{next[k]=doc[k]});
+  next.auto=doc.auto;
+  if(log){
+    const orig=new Date(latest.createdAt),dvv=f.elements['date']?f.elements['date'].value:'';
+    if(dvv&&dvv!==ymd(orig))next.createdAt=new Date(dvv+'T'+pad(orig.getHours())+':'+pad(orig.getMinutes())+':'+pad(orig.getSeconds())).toISOString();
+    next.disp=latest.tindakan?latest.disp:doc.disp;
+  }else next.disp=doc.disp;
+  const changes=diffReport(P,latest,next);
+  if(!changes.length)return fail('Belum ada perubahan dari laporan sebelumnya.');
+  next.verified=null;
+  next.edits=(latest.edits||[]).concat([{at:new Date().toISOString(),by:me.id,name:me.name,role:me.role,reason,changes}]);
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;
+  const ok=await safe(()=>put('reports',next));
+  btn.disabled=false;
+  if(!ok)return;
+  const wasActive=S.activeDraft===did,nd=removeDraft(did),left=visibleDrafts().length;
+  toast('Perubahan laporan '+next.wo+' disimpan'+(left?'. '+left+' laporan lain masih terbuka.':''));
+  if(wasActive){if(nd)S.view='form';else{S.view='list';S.detailId=next.id}}
+  render();window.scrollTo(0,0);
+}
+function editsHTML(r){
+  const es=(r.edits||[]).slice().reverse();if(!es.length)return '';
+  const items=es.map(e=>'<div class="hitem"><div class="hh"><b>'+esc(e.name||'—')+(e.role&&e.role!=='operator'?' <span class="faint" style="font-weight:400">· '+esc((ROLES[e.role]||{t:''}).t)+'</span>':'')+'</b><span class="faint">'+esc(fmtFull(e.at))+'</span></div>'+
+    '<p class="hr"><span class="faint">Alasan:</span> '+esc(e.reason||'—')+'</p>'+
+    '<ul class="hch">'+(e.changes||[]).map(c=>'<li><span class="hl">'+esc(c.label)+'</span><span class="hv"><s>'+esc(c.from)+'</s> → <b>'+esc(c.to)+'</b></span></li>').join('')+'</ul></div>').join('');
+  return '<section><h3 style="margin-bottom:8px">Riwayat edit ('+es.length+')</h3><div class="hist">'+items+
+    '<div class="hitem"><div class="hh"><b>Laporan dibuat</b><span class="faint">'+esc(fmtFull(r.createdAt))+'</span></div><p class="hr">oleh '+esc(r.operatorName||'—')+'</p></div></div></section>';
+}
+
+/* ================= BUAT LAPORAN ================= */
+function newHTML(me){
+  const allowed=allowedProcs();
+  return '<div class="pagehead"><div><h1>Buat laporan</h1><p class="sub">Pilih proses yang sedang Anda cek. Beberapa laporan bisa diisi sekaligus.'+(isSpv()?'':' Hanya proses yang diizinkan untuk akun Anda yang tampil.')+'</p></div></div>'+
+    (allowed.length?resumeHTML()+groupsHTML(allowed):'<div class="panel empty"><b>Akun Anda belum punya akses proses</b><span>Minta admin QC menambahkan proses yang boleh Anda buka.</span></div>');
+}
+function formHTML(pid,me){
+  if(PROC[pid].kind==='log')return logFormHTML(pid,me);
+  const P=PROC[pid],now=new Date();
+  S.dispTouched=false;
+  const meas=P.measures.map(m=>{
+    const head='<div class="h"><label for="m_'+m.k+'">'+esc(m.label)+'</label><span class="spec">'+esc(specText(m))+'</span></div>';
+    const body=m.target?
+      '<div class="pair"><div><span class="sub">Target</span><input class="in mono" id="t_'+m.k+'" name="t_'+m.k+'" inputmode="decimal" autocomplete="off" placeholder="0"></div><div><span class="sub">Aktual ('+esc(m.unit)+')</span><input class="in mono" id="m_'+m.k+'" name="m_'+m.k+'" inputmode="decimal" autocomplete="off" placeholder="0"></div></div>':
+      '<div class="inp"><input class="in mono" id="m_'+m.k+'" name="m_'+m.k+'" inputmode="decimal" autocomplete="off" placeholder="0"><span class="unit">'+esc(m.unit)+'</span></div>';
+    return '<div class="meas" data-k="'+m.k+'">'+head+body+'<div class="foot"><span class="chip mute st">—</span></div></div>';
+  }).join('');
+  const checks=P.checks.map(c=>
+    '<div class="chk" data-k="'+c.k+'"><span class="q" id="q_'+c.k+'">'+esc(c.label)+'</span>'+
+    '<div class="seg" role="radiogroup" aria-labelledby="q_'+c.k+'">'+
+      ['ok:OK:ok','ng:NG:ng','na:N/A:na'].map(s=>{const[v,t,cl]=s.split(':');return '<div class="cell"><input type="radio" name="c_'+c.k+'" id="c_'+c.k+'_'+v+'" value="'+v+'"><label class="'+cl+'" for="c_'+c.k+'_'+v+'">'+t+'</label></div>'}).join('')+
+    '</div></div>').join('');
+  return '<div class="pagehead g-'+P.group+'"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>Laporan pengecekan</div><h1>'+esc(P.label)+'</h1></div>'+
+    '<button class="btn sm ghost" data-act="cancelform">'+ic('x')+'Batal</button></div>'+
+   '<form id="rform" data-form="report" data-p="'+pid+'" novalidate style="display:flex;flex-direction:column;gap:24px">'+
+    '<section class="panel pad"><div class="sechead"><h2>Data produksi</h2><span class="muted mono" style="font-size:13px">'+esc(me.name)+' · '+esc(fmtT(now.toISOString()))+'</span></div>'+
+     '<div class="fgrid">'+
+      '<div class="fld"><label for="f_wo">No. PR <span class="req">*</span></label><input class="in mono" id="f_wo" name="wo" autocomplete="off"></div>'+
+      '<div class="fld"><label for="f_product">Produk <span class="req">*</span></label><input class="in" id="f_product" name="product" autocomplete="off"></div>'+
+      '<div class="fld"><label for="f_customer">Customer</label><input class="in" id="f_customer" name="customer" autocomplete="off"></div>'+
+      '<div class="fld"><label for="f_machine">Mesin</label><input class="in" id="f_machine" name="machine" autocomplete="off"></div>'+
+      '<div class="fld"><label for="f_batch">No. batch / roll</label><input class="in mono" id="f_batch" name="batch" autocomplete="off"></div>'+
+      '<div class="fld"><label for="f_shift">Shift</label><select class="in" id="f_shift" name="shift">'+['1','2','3'].map(s=>'<option value="'+s+'"'+(s===shiftOf(now)?' selected':'')+'>Shift '+s+'</option>').join('')+'</select></div>'+
+     '</div></section>'+
+    '<section><div class="sechead"><h2>Pengukuran</h2><span class="muted" style="font-size:13px">Boleh pakai koma atau titik desimal</span></div><div class="meas-grid">'+meas+'</div></section>'+
+    '<section class="panel pad"><div class="sechead"><h2>Pengecekan visual</h2><span class="muted" style="font-size:13px">OK, NG, atau N/A</span></div>'+checks+'</section>'+
+    '<section class="panel pad"><div class="sechead"><h2>Hasil</h2></div>'+
+     '<div class="fgrid"><div class="fld"><label for="f_disp">Disposisi</label><select class="in" id="f_disp" name="disp"><option value="lulus">Lulus</option><option value="hold">Hold</option><option value="reject">Reject</option></select></div></div>'+
+     '<div class="fld" style="margin-top:14px"><label for="f_note">Catatan <span class="faint" id="noteReq" style="font-weight:400"></span></label><textarea class="in" id="f_note" name="note" placeholder="Temuan, tindakan perbaikan, atau keterangan lain"></textarea></div>'+
+    '</section>'+
+    editReasonHTML()+'<div id="formErr" class="err" role="alert" hidden></div>'+
+    '<div class="formbar"><div class="autores" aria-live="polite"><b id="autoRes">Belum lengkap</b><span class="faint" id="prog" style="font-size:13px"></span></div>'+
+     '<div class="actions"><button type="button" class="btn" data-act="cancelform">Batal</button><button type="submit" class="btn pri">'+ic('check')+(isEditDraft()?'Simpan perubahan':'Simpan laporan')+'</button></div></div>'+
+   '</form>';
+}
+function readForm(f,P){
+  const vals={},targets={},checks={};
+  P.measures.forEach(m=>{
+    const v=parseNum(f.elements['m_'+m.k].value);if(!isNaN(v))vals[m.k]=v;
+    if(m.target){const t=parseNum(f.elements['t_'+m.k].value);if(!isNaN(t))targets[m.k]=t}
+  });
+  P.checks.forEach(c=>{const el=f.querySelector('input[name="c_'+c.k+'"]:checked');if(el)checks[c.k]=el.value});
+  return {vals,targets,checks};
+}
+function updateForm(){
+  const f=$('#rform');if(!f)return;
+  refreshTab(f);
+  const P=PROC[f.dataset.p];
+  if(P.kind==='log'){updateLog(f,P);return}
+  const d=readForm(f,P),r=evalData(P,d);
+  P.measures.forEach(m=>{
+    const s=mStatus(m,d.vals[m.k],d.targets[m.k]),box=f.querySelector('.meas[data-k="'+m.k+'"]'),st=box.querySelector('.st');
+    box.dataset.s=s;
+    st.className='chip st '+(s==='ok'?'ok':s==='ng'?'ng':'mute');
+    st.innerHTML=s==='empty'?'—':'<i></i>'+(s==='ok'?'Sesuai':'Di luar spek');
+  });
+  P.checks.forEach(c=>{const row=f.querySelector('.chk[data-k="'+c.k+'"]');row.dataset.s=d.checks[c.k]||'';if(d.checks[c.k])row.classList.remove('miss')});
+  const total=P.measures.length+P.checks.length;
+  $('#prog').textContent=(total-r.missing)+' dari '+total+' item terisi';
+  const el=$('#autoRes');
+  el.style.color=r.bad.length?'var(--ng)':'';
+  el.textContent=r.bad.length?(r.bad.length+' temuan di luar spesifikasi'):(r.missing?'Belum lengkap':'Semua item sesuai');
+  if(!S.dispTouched)f.elements.disp.value=r.bad.length?'hold':'lulus';
+  $('#noteReq').textContent=r.bad.length?'(wajib diisi karena ada temuan)':'';
+}
+async function submitReport(f){
+  const did=S.activeDraft;
+  const me=getMe(),pid=f.dataset.p,P=PROC[pid];
+  if(P.kind==='log')return submitLog(f,P);
+  const d=readForm(f,P),r=evalData(P,d);
+  const wo=f.wo.value.trim(),product=f.product.value.trim(),note=f.note.value.trim();
+  const errs=[];
+  if(!wo)errs.push('Isi No. PR.');
+  if(!product)errs.push('Isi nama produk.');
+  if(r.missing){
+    errs.push('Masih ada '+r.missing+' item pengukuran atau pengecekan yang kosong.');
+    P.checks.forEach(c=>{if(!d.checks[c.k])f.querySelector('.chk[data-k="'+c.k+'"]').classList.add('miss')});
+  }
+  if(r.bad.length&&!note)errs.push('Isi catatan untuk temuan di luar spesifikasi.');
+  if(errs.length){
+    const box=$('#formErr');box.textContent=errs.join(' ');box.hidden=false;box.scrollIntoView({block:'center',behavior:'smooth'});return;
+  }
+  const now=new Date(),id=uid('r');
+  const yy=String(now.getFullYear()).slice(2)+pad(now.getMonth()+1)+pad(now.getDate());
+  const doc={id,no:P.code+'-'+yy+'-'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds()),proc:pid,createdAt:now.toISOString(),
+    shift:f.shift.value,wo,product,customer:f.customer.value.trim(),machine:f.machine.value.trim(),batch:f.batch.value.trim(),
+    operatorId:me.id,operatorName:me.name,vals:d.vals,targets:d.targets,checks:d.checks,note,
+    auto:r.bad.length?'ng':'ok',disp:f.disp.value,verified:null};
+  const dr0=S.drafts.find(x=>x.id===did);
+  if(dr0&&dr0.editId)return commitEdit(dr0,doc,f,did);
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;
+  const ok=await safe(()=>put('reports',doc));
+  btn.disabled=false;
+  if(ok){afterSave(doc,did)}
+}
+
+
+/* ================= FORM LOG QC (Bag Making & Spout) ================= */
+function dlist(id,arr){return '<datalist id="'+id+'">'+Array.from(new Set(arr.filter(Boolean))).slice(0,80).map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist>'}
+function segTwo(name,opts){
+  return '<div class="seg two" role="radiogroup" aria-labelledby="lbl_'+name+'">'+opts.map(o=>'<div class="cell"><input type="radio" name="'+name+'" id="'+name+'_'+o[0]+'" value="'+o[0]+'"'+(o[3]?' checked':'')+'><label class="'+o[2]+'" for="'+name+'_'+o[0]+'">'+o[1]+'</label></div>').join('')+'</div>';
+}
+function logFormHTML(pid,me){
+  const P=PROC[pid],now=new Date();
+  S.dispTouched=false;S.ktsTouched=false;
+  const past=S.reports.filter(r=>PROC[r.proc]&&PROC[r.proc].kind==='log'&&PROC[r.proc].group===P.group),un=P.unit||'pcs';
+  const u=k=>past.map(r=>r[k]);
+  return '<div class="pagehead g-'+P.group+'"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>Laporan pengecekan</div><h1>'+esc(P.label)+'</h1></div>'+
+    '<button class="btn sm ghost" data-act="cancelform">'+ic('x')+'Batal</button></div>'+
+   '<form id="rform" data-form="report" data-p="'+pid+'" novalidate style="display:flex;flex-direction:column;gap:24px">'+
+    '<section class="panel pad"><div class="sechead"><h2>Data produk</h2></div>'+
+     '<div class="fgrid">'+
+      '<div class="fld"><label for="f_date">Tanggal</label><input class="in" type="date" id="f_date" name="date" value="'+ymd(now)+'" max="'+ymd(now)+'"></div>'+
+      '<div class="fld"><label for="f_shift">Shift</label><select class="in" id="f_shift" name="shift">'+['1','2','3'].map(s=>'<option value="'+s+'"'+(s===shiftOf(now)?' selected':'')+'>Shift '+s+'</option>').join('')+'</select></div>'+
+      '<div class="fld"><span class="lbl">QC Inspector</span><div class="totalbox" style="font-family:var(--f-body)">'+esc(me.name)+'</div></div>'+
+      '<div class="fld"><span class="lbl">WIP</span><div class="totalbox" style="font-family:var(--f-body)">'+esc(P.label)+'</div></div>'+
+      '<div class="fld"><label for="f_wo">No. PR <span class="req">*</span></label><input class="in mono" id="f_wo" name="wo" autocomplete="off" autocapitalize="characters" placeholder="PR12608004701"></div>'+
+      '<div class="fld"><label for="f_product">Nama produk <span class="req">*</span></label><input class="in" id="f_product" name="product" autocomplete="off" list="dl_product"></div>'+
+      '<div class="fld"><label for="f_customer">Customer</label><input class="in" id="f_customer" name="customer" autocomplete="off" list="dl_customer"></div>'+
+      (P.sub?'<div class="fld"><label for="f_sub">Jenis rewind <span class="req">*</span></label><select class="in" id="f_sub" name="sub"><option value="">Pilih jenis</option>'+P.sub.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')+'</select></div>':'')+
+      '<div class="fld"><label for="f_size">'+esc(P.sizeLabel||'Ukuran kantong (lebar x tinggi, mm)')+'</label><input class="in" id="f_size" name="size" autocomplete="off" list="dl_size" placeholder="'+esc(P.sizePh||'140 x 210 (Doypack) mm')+'"></div>'+
+     '</div></section>'+
+    '<section class="panel pad"><div class="sechead"><h2>Mesin</h2></div>'+
+     '<div class="fgrid">'+
+      '<div class="fld"><label for="f_machine">Nama mesin <span class="req">*</span></label><input class="in" id="f_machine" name="machine" autocomplete="off" list="dl_machine" placeholder="TOTANI 1"></div>'+
+      '<div class="fld"><label for="f_op">OP mesin</label><input class="in" id="f_op" name="op" autocomplete="off" list="dl_op" placeholder="Nama operator, pisahkan dengan &amp;"></div>'+
+      '<div class="fld"><span class="lbl" id="lbl_cond">Kondisi mesin <span class="req">*</span></span>'+segTwo('cond',[['ok','OK','ok'],['notok','Tidak OK','ng']])+'</div>'+
+     '</div></section>'+
+    '<section class="panel pad"><div class="sechead"><h2>'+(P.noDus?'Kuantitas':'Dus dan kuantitas')+'</h2><span class="muted" style="font-size:13px">Dalam '+un+'</span></div>'+
+     (P.noDus?'':'<div class="fgrid">'+
+      '<div class="fld"><label for="f_dusok">No. dus sudah diproses</label><textarea class="in mono" id="f_dusok" name="dusOk" style="min-height:64px" placeholder="071026A9B9 - 071026A15B15"></textarea></div>'+
+      '<div class="fld"><label for="f_dusng">No. dus QC Not Pass</label><textarea class="in mono" id="f_dusng" name="dusNg" style="min-height:64px"></textarea></div>'+
+     '</div>')+
+     '<div class="fgrid"'+(P.noDus?'':' style="margin-top:14px"')+'>'+
+      '<div class="fld"><label for="f_qp">QC Pass <span class="req">*</span></label><input class="in mono" id="f_qp" name="qp" inputmode="numeric" autocomplete="off" placeholder="0"></div>'+
+      '<div class="fld"><label for="f_qn">QC Not Pass <span class="req">*</span></label><input class="in mono" id="f_qn" name="qn" inputmode="numeric" autocomplete="off" placeholder="0"></div>'+
+      '<div class="fld"><span class="lbl">Total</span><div class="totalbox" id="totalBox">—</div></div>'+
+     '</div></section>'+
+    '<section class="panel pad"><div class="sechead"><h2>Ketidaksesuaian (KTS)</h2></div>'+
+     '<div class="fgrid"><div class="fld"><span class="lbl" id="lbl_kts">KTS</span>'+segTwo('kts',[['tidak','Tidak ada','ok',true],['ada','Ada','ng']])+'</div></div>'+
+     '<div class="fld" style="margin-top:14px"><label for="f_defect">Keterangan defect / lain-lain <span class="faint" id="defectReq" style="font-weight:400"></span></label><textarea class="in" id="f_defect" name="defect" placeholder="Contoh: foil keriput, cetakan kering"></textarea></div>'+
+     '<p class="muted" style="font-size:14px;margin-top:12px">Tindakan (Diterima, Sortir, atau Dimusnahkan) untuk produk label biru atau merah diisi QC Ass SPV ke atas setelah laporan disimpan.</p>'+
+    '</section>'+
+    dlist('dl_product',u('product'))+dlist('dl_customer',u('customer'))+dlist('dl_size',u('size'))+dlist('dl_machine',(P.machines||MACHINES).concat(u('machine')))+dlist('dl_op',u('op'))+
+    editReasonHTML()+'<div id="formErr" class="err" role="alert" hidden></div>'+
+    '<div class="formbar"><div class="autores" aria-live="polite"><b id="autoRes">Belum lengkap</b><span class="faint" id="prog" style="font-size:13px"></span></div>'+
+     '<div class="actions"><button type="button" class="btn" data-act="cancelform">Batal</button><button type="submit" class="btn pri">'+ic('check')+(isEditDraft()?'Simpan perubahan':'Simpan laporan')+'</button></div></div>'+
+   '</form>';
+}
+function updateLog(f,P){
+  const un=(P&&P.unit)||'pcs';
+  const qp=toInt(f.elements.qp.value),qn=toInt(f.elements.qn.value);
+  const tot=(isNaN(qp)?0:qp)+(isNaN(qn)?0:qn);
+  $('#totalBox').textContent=(isNaN(qp)&&isNaN(qn))?'—':fmtInt(tot);
+  if(!S.ktsTouched&&!isNaN(qn)){const el=f.querySelector('input[name="kts"][value="'+(qn>0?'ada':'tidak')+'"]');if(el)el.checked=true}
+  const ck=f.querySelector('input[name="kts"]:checked');
+  $('#defectReq').textContent=ck&&ck.value==='ada'?'(wajib diisi)':'';
+  const res=$('#autoRes'),prog=$('#prog');
+  if(isNaN(qp)||isNaN(qn)){res.textContent='Belum lengkap';res.style.color='';prog.textContent='Isi QC Pass dan QC Not Pass (boleh 0)'}
+  else if(qn>0){res.textContent=fmtInt(qn)+' '+un+' QC Not Pass';res.style.color='var(--ng)';prog.textContent='Total '+fmtInt(tot)+' '+un+' · status Hold sampai SPV memberi tindakan'}
+  else{res.textContent='Semua lolos QC';res.style.color='';prog.textContent='Total '+fmtInt(tot)+' '+un}
+}
+async function submitLog(f,P){
+  const did=S.activeDraft;
+  const me=getMe(),pid=f.dataset.p;
+  const E=n=>f.elements[n];
+  const wo=E('wo').value.trim(),product=E('product').value.trim(),machine=E('machine').value.trim(),defect=E('defect').value.trim();
+  const qp=toInt(E('qp').value),qn=toInt(E('qn').value);
+  const cond=(f.querySelector('input[name="cond"]:checked')||{}).value,kts=(f.querySelector('input[name="kts"]:checked')||{}).value||'tidak';
+  const errs=[];
+  if(!E('date').value)errs.push('Isi tanggal.');
+  if(!wo)errs.push('Isi No. PR.');
+  if(!product)errs.push('Isi nama produk.');
+  if(P.sub&&!E('sub').value)errs.push('Pilih jenis rewind.');
+  if(!machine)errs.push('Isi nama mesin.');
+  if(!cond)errs.push('Pilih kondisi mesin.');
+  if(isNaN(qp)||isNaN(qn))errs.push('Isi QC Pass dan QC Not Pass (isi 0 jika tidak ada).');
+  if(kts==='ada'&&!defect)errs.push('Isi keterangan defect untuk KTS.');
+  if(errs.length){const box=$('#formErr');box.textContent=errs.join(' ');box.hidden=false;box.scrollIntoView({block:'center',behavior:'smooth'});return}
+  const now=new Date(),dv=E('date').value;
+  const when=dv===ymd(now)?now:new Date(dv+'T'+pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds()));
+  const id=uid('r');
+  const yy=String(when.getFullYear()).slice(2)+pad(when.getMonth()+1)+pad(when.getDate());
+  const ng=qn>0||kts==='ada';
+  const doc={id,no:P.code+'-'+yy+'-'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds()),proc:pid,createdAt:when.toISOString(),
+    shift:E('shift').value,wo,product,customer:E('customer').value.trim(),machine,batch:'',size:E('size').value.trim(),op:E('op').value.trim(),cond,
+    sub:P.sub?E('sub').value:'',dusOk:E('dusOk')?E('dusOk').value.trim():'',dusNg:E('dusNg')?E('dusNg').value.trim():'',qp,qn,kts,defect,tindakan:'',tindakanNote:'',
+    operatorId:me.id,operatorName:me.name,vals:{},targets:{},checks:{},note:'',auto:ng?'ng':'ok',disp:ng?'hold':'lulus',verified:null};
+  const dr0=S.drafts.find(x=>x.id===did);
+  if(dr0&&dr0.editId)return commitEdit(dr0,doc,f,did);
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;
+  const ok=await safe(()=>put('reports',doc));
+  btn.disabled=false;
+  if(ok){afterSave(doc,did)}
+}
+function detailLogHTML(r){
+  const me=getMe(),P=PROC[r.proc];
+  const tn=r.tindakan?TINDAKAN[r.tindakan]:null;
+  const tview=tn?chip(tn.c,tn.t)+(r.tindakanNote?'<p style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.tindakanNote)+'</p>':'')+(r.tindakanBy?'<div class="faint" style="font-size:13px;margin-top:6px">'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</div>':''):'<span class="faint">Belum ditentukan</span>';
+  const tform=isSpv()?'<form data-form="tindakan" data-id="'+r.id+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px" novalidate>'+
+    '<div class="fld"><label for="t_sel">Tindakan</label><select class="in" id="t_sel" name="tindakan"><option value="">Belum ditentukan</option>'+Object.keys(TINDAKAN).map(k=>'<option value="'+k+'"'+(r.tindakan===k?' selected':'')+'>'+TINDAKAN[k].t+'</option>').join('')+'</select></div>'+
+    '<div class="fld"><label for="t_note">Keterangan</label><textarea class="in" id="t_note" name="tnote">'+esc(r.tindakanNote||'')+'</textarea></div>'+
+    '<div><button class="btn" type="submit">Simpan tindakan</button></div></form>':'';
+  const tsec=(r.qn>0||r.kts==='ada'||r.tindakan)?'<section class="panel pad"><h3 style="margin-bottom:2px">Tindakan produk label biru / merah</h3><p class="muted" style="font-size:13px;margin-bottom:10px">Diisi oleh QC Ass SPV ke atas</p>'+tview+tform+'</section>':'';
+  const ver='';
+  const confirming=S.confirmDel===r.id,acts=[];
+  if(canEditReport(r))acts.push('<button class="btn" data-act="editreport" data-id="'+r.id+'">'+ic('edit')+'Edit laporan</button>');
+  acts.push('<button class="btn" data-act="copy" data-id="'+r.id+'">'+ic('copy')+'Salin ringkasan</button>');
+  if(me.role==='admin')acts.push(confirming?'<button class="btn danger" data-act="delyes" data-id="'+r.id+'">Ya, hapus laporan</button><button class="btn ghost" data-act="delno">Batal</button>':'<button class="btn danger" data-act="del" data-id="'+r.id+'">Hapus</button>');
+  const q=(l,v,c)=>'<div class="qcell"><div class="faint" style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:600">'+l+'</div><div class="n mono" style="'+(c?'color:'+c:'')+'">'+fmtInt(v)+'</div></div>';
+  return '<div class="shead g-'+P.group+'"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+(r.shift?' · Shift '+esc(r.shift):'')+'</div><h2 class="mono" style="font-family:var(--f-mono);font-size:19px;margin-top:4px">'+esc(r.wo)+'</h2><div style="margin-top:4px;font-size:15px;font-weight:500">'+esc(r.product)+'</div>'+(r.customer?'<div class="muted" style="font-size:14px">'+esc(r.customer)+'</div>':'')+'</div>'+
+     '<div style="display:flex;gap:10px;align-items:center">'+statusChip(r)+'<button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div></div>'+
+   '<dl class="meta">'+
+    [['Tanggal',fmtFull(r.createdAt)],['Shift',r.shift],['QC Inspector',r.operatorName],['No. PR',r.wo],['WIP',P.label]].concat(r.sub?[['Jenis rewind',r.sub]]:[],[['Nama produk',r.product],['Customer',r.customer||'—'],[P.sizeLabel?'Ukuran potong (mm) x meter':'Ukuran kantong',r.size||'—'],['Nama mesin',r.machine||'—'],['OP mesin',r.op||'—'],['Kondisi mesin',r.cond==='ok'?'OK':r.cond?'Tidak OK':'—']]).map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd></div>').join('')+'</dl>'+
+   '<section><h3 style="margin-bottom:8px">Kuantitas ('+unitOf(r)+')</h3><div class="qtygrid">'+q('QC Pass',r.qp)+q('QC Not Pass',r.qn,r.qn>0?'var(--ng)':'')+q('Total',(r.qp||0)+(r.qn||0))+'</div></section>'+
+   ((r.dusOk||r.dusNg)?'<section><h3 style="margin-bottom:4px">Nomor dus</h3><div class="dl">'+(r.dusOk?'<div class="row"><div>Sudah diproses</div><div class="v" style="text-align:right;overflow-wrap:anywhere">'+esc(r.dusOk)+'</div></div>':'')+(r.dusNg?'<div class="row"><div>QC Not Pass</div><div class="v" style="text-align:right;overflow-wrap:anywhere">'+esc(r.dusNg)+'</div></div>':'')+'</div></section>':'')+
+   '<section><h3 style="margin-bottom:6px">Ketidaksesuaian (KTS)</h3><div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">'+(r.kts==='ada'?chip('ng','Ada'):chip('ok','Tidak ada'))+(r.defect?'<p style="white-space:pre-wrap;overflow-wrap:anywhere;flex:1 1 220px">'+esc(r.defect)+'</p>':'')+'</div></section>'+
+   tsec+sortirSection(r)+editsHTML(r)+ver+'<div class="actions">'+acts.join('')+'</div>';
+}
+async function submitTindakan(f){
+  const r=S.reports.find(x=>x.id===f.dataset.id),me=getMe();if(!r||!isSpv())return;
+  const t=f.elements['tindakan'].value,note=f.elements['tnote'].value.trim();
+  const doc=Object.assign({},r,{tindakan:t,tindakanNote:note,tindakanBy:t||note?{by:me.id,name:me.name,at:new Date().toISOString()}:null});
+  if(t&&TINDAKAN[t])doc.disp=TINDAKAN[t].d;
+  const ok=await safe(()=>put('reports',doc));
+  if(ok){toast('Tindakan disimpan');document.activeElement&&document.activeElement.blur&&document.activeElement.blur();renderModal()}
+}
+function summaryLog(r){
+  const P=PROC[r.proc];
+  const L=['Laporan '+plabel(r,P),'Tanggal: '+fmtFull(r.createdAt)+' (Shift '+r.shift+')','QC Inspector: '+r.operatorName,'No. PR: '+r.wo+' · '+r.product+(r.customer?' · '+r.customer:''),(P.sizeLabel?'Ukuran potong: ':'Ukuran: ')+(r.size||'-'),'Mesin: '+(r.machine||'-')+(r.op?' ('+r.op+')':'')+' · kondisi '+(r.cond==='ok'?'OK':'Tidak OK'),'Kuantitas: pass '+fmtInt(r.qp)+' · not pass '+fmtInt(r.qn)+' · total '+fmtInt((r.qp||0)+(r.qn||0))+' '+unitOf(r),'Status: '+(DISP[r.disp]||{}).t];
+  if(r.dusNg)L.push('No. dus Not Pass: '+r.dusNg);
+  if(r.kts==='ada')L.push('KTS: Ada'+(r.defect?' - '+r.defect:''));
+  if(r.tindakan)L.push('Tindakan: '+(TINDAKAN[r.tindakan]||{t:r.tindakan}).t+(r.tindakanNote?' - '+r.tindakanNote:''));
+  return L.join('\n');
+}
+
+/* ================= RIWAYAT ================= */
+function filteredReports(){
+  const f=S.filters,q=f.q.trim().toLowerCase();
+  let cut=0;
+  let mFrom=0,mTo=0;
+  if(f.range==='today')cut=startOfDay(new Date()).getTime();
+  else if(/^m:\d{4}-\d{2}$/.test(f.range)){const y=+f.range.slice(2,6),m=+f.range.slice(7)-1;mFrom=new Date(y,m,1).getTime();mTo=new Date(y,m+1,1).getTime()}
+  else if(f.range!=='all')cut=Date.now()-Number(f.range)*86400000;
+  return visibleReports().filter(r=>{
+    if(f.proc!=='all'&&r.proc!==f.proc)return false;
+    if(f.disp==='tindakan'){if(!(r.qn>0&&!r.tindakan))return false}
+    else if(f.disp!=='all'&&r.disp!==f.disp)return false;
+    if(cut&&new Date(r.createdAt).getTime()<cut)return false;
+    if(mFrom){const t=new Date(r.createdAt).getTime();if(t<mFrom||t>=mTo)return false}
+    if(q){const hay=[r.wo,r.product,r.customer,r.machine,r.batch,r.operatorName,r.op,r.defect,r.size].join(' ').toLowerCase();if(!hay.includes(q))return false}
+    return true;
+  });
+}
+const BLN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+function monthOpts(cur){
+  const set={},now=new Date();set[now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')]=1;
+  visibleReports().forEach(r=>{const d=new Date(r.createdAt);if(!isNaN(d))set[d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')]=1});
+  const ks=Object.keys(set).sort().reverse();
+  if(/^m:/.test(cur)&&!set[cur.slice(2)])ks.push(cur.slice(2));
+  return '<optgroup label="Per bulan">'+ks.map(k=>'<option value="m:'+k+'"'+(cur==='m:'+k?' selected':'')+'>'+BLN[+k.slice(5)-1]+' '+k.slice(0,4)+'</option>').join('')+'</optgroup>';
+}
+function listHTML(me){
+  const allowed=allowedProcs(),f=S.filters;
+  const opts='<option value="all">Semua proses</option>'+GROUPS.map(g=>{const it=g.items.filter(i=>allowed.includes(i));return it.length?'<optgroup label="'+esc(g.label)+'">'+it.map(i=>'<option value="'+i+'"'+(f.proc===i?' selected':'')+'>'+esc(PROC[i].label)+'</option>').join('')+'</optgroup>':''}).join('');
+  const sel=(v,cur)=>cur===v?' selected':'';
+  return '<div class="pagehead"><div><h1>Laporan In-Line</h1><p class="sub" id="countTxt">'+filteredReports().length+' laporan</p></div>'+
+    (isSpv()&&S.canDownload?'<button class="btn" data-act="export">'+ic('download')+'Unduh CSV</button>':'')+'</div>'+
+   '<div class="filters">'+
+    '<div class="fld"><label for="fq">Cari</label><input class="in" id="fq" data-filter="q" type="search" placeholder="No. PR, produk, operator" value="'+esc(f.q)+'" autocomplete="off"></div>'+
+    '<div class="fld"><label for="fp">Proses</label><select class="in" id="fp" data-filter="proc">'+opts.replace('<option value="all">','<option value="all"'+(f.proc==='all'?' selected':'')+'>')+'</select></div>'+
+    '<div class="fld"><label for="fd">Status</label><select class="in" id="fd" data-filter="disp"><option value="all"'+sel('all',f.disp)+'>Semua status</option><option value="lulus"'+sel('lulus',f.disp)+'>Lulus</option><option value="hold"'+sel('hold',f.disp)+'>Hold</option><option value="reject"'+sel('reject',f.disp)+'>Reject</option>'+(me.role==='admin'?'<option value="tindakan"'+sel('tindakan',f.disp)+'>Menunggu tindakan</option>':'')+'</select></div>'+
+    '<div class="fld"><label for="fr">Periode</label><select class="in" id="fr" data-filter="range"><option value="today"'+sel('today',f.range)+'>Hari ini</option><option value="7"'+sel('7',f.range)+'>7 hari terakhir</option><option value="30"'+sel('30',f.range)+'>30 hari terakhir</option>'+monthOpts(f.range)+'<option value="all"'+sel('all',f.range)+'>Semua</option></select></div>'+
+   '</div><div id="results">'+resultsHTML()+'</div>';
+}
+function resultsHTML(){
+  const rs=filteredReports();
+  const ct=$('#countTxt');if(ct)ct.textContent=rs.length+' laporan';
+  if(!rs.length)return '<div class="panel empty"><b>Tidak ada laporan</b><span>Ubah filter atau periode untuk melihat laporan lain.</span></div>';
+  const rows=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
+    return '<tr data-act="open" data-id="'+r.id+'" tabindex="0" class="g-'+P.group+'"><td>'+fmtT(r.createdAt)+'</td><td>'+esc(r.shift||'—')+'</td>'+
+    '<td><span style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+'</span></td>'+
+    '<td class="mono">'+esc(r.wo)+'</td><td>'+esc(r.product)+'</td><td>'+esc(r.customer||'—')+'</td>'+
+    '<td>'+esc(r.operatorName)+'</td><td class="mono">'+qtyCell(r)+'</td><td><span class="chips">'+statusChip(r)+editedChip(r)+'</span></td>'+
+    '</tr>'}).join('');
+  const cards=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
+    return '<button class="card g-'+P.group+'" data-act="open" data-id="'+r.id+'"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+'</span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+statusChip(r)+editedChip(r)+'</span></div>'+
+    '<div class="r2"><span class="pdot"></span>'+esc(plabel(r,P))+'</div>'+
+    '<div class="r3"><span>Shift '+esc(r.shift||'—')+'</span><span>'+esc(r.product)+'</span>'+(r.customer?'<span>'+esc(r.customer)+'</span>':'')+'<span>'+esc(r.operatorName)+'</span>'+(r.qp!=null?'<span class="mono">'+qtyCell(r)+' '+unitOf(r)+'</span>':'')+'<span>'+fmtT(r.createdAt)+'</span>'+'</div></button>'}).join('');
+  return '<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Operator / QC</th><th>Qty</th><th>Hasil</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
+}
+function csvEscape(v){v=String(v==null?'':v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+async function exportCsv(){
+  if(!dlh&&!S.remote)return;
+  const rs=filteredReports();
+  const head=['Waktu','Proses','Shift','Operator','No. PR','Customer','Produk','Mesin','Batch','Hasil otomatis','Disposisi','Pengukuran','Catatan','Ukuran kantong','No. dus diproses','No. dus Not Pass','QC Pass','QC Not Pass','Total','Satuan','KTS','Defect / keterangan','Tindakan','Catatan tindakan','OP mesin','Kondisi mesin','Jenis rewind'];
+  const lines=[head.map(csvEscape).join(',')];
+  rs.forEach(r=>{const P=PROC[r.proc];
+    const meas=P?P.measures.filter(m=>r.vals&&r.vals[m.k]!=null).map(m=>m.label+'='+fmtNum(r.vals[m.k])+' '+m.unit+(m.target&&r.targets&&r.targets[m.k]!=null?' (target '+fmtNum(r.targets[m.k])+')':'')).join('; '):'';
+    lines.push([new Date(r.createdAt).toLocaleString('id-ID'),P?P.label:r.proc,r.shift,r.operatorName,r.wo,r.customer,r.product,r.machine,r.batch,r.auto==='ng'?'Ada temuan':'Sesuai',(DISP[r.disp]||{}).t,meas,r.note,r.size,r.dusOk,r.dusNg,r.qp,r.qn,(r.qp!=null?r.qp+(r.qn||0):''),(r.qp!=null?unitOf(r):''),r.kts==='ada'?'Ada':(r.kts?'Tidak ada':''),r.defect,r.tindakan?(TINDAKAN[r.tindakan]||{t:r.tindakan}).t:'',r.tindakanNote,r.op,r.cond==='ok'?'OK':(r.cond?'Tidak OK':''),r.sub].map(csvEscape).join(','));
+  });
+  const fn='laporan-qc-'+new Date().toISOString().slice(0,10)+'.csv',txt='﻿'+lines.join('\r\n');
+  if(!dlh){downloadText(fn,txt);toast('File CSV diunduh');return}
+  try{await dlh.save({filename:fn,data:txt});toast('File CSV siap disimpan')}
+  catch(e){if(!e||e.code!=='declined')toast('File CSV tidak bisa disimpan di tampilan ini.',true)}
+}
+
+/* ================= DETAIL LAPORAN ================= */
+function detailHTML(r){
+  if(PROC[r.proc]&&PROC[r.proc].kind==='log')return detailLogHTML(r);
+  const me=getMe(),P=PROC[r.proc]||{label:r.proc,group:'printing',measures:[],checks:[]};
+  const meas=P.measures.filter(m=>r.vals&&r.vals[m.k]!=null).map(m=>{
+    const s=mStatus(m,r.vals[m.k],r.targets&&r.targets[m.k]);
+    const sp=m.target?('Target '+fmtNum(r.targets&&r.targets[m.k])+' ±'+fmtNum(m.tol)):specText(m);
+    return '<div class="row"><div><div>'+esc(m.label)+'</div><div class="sp">'+esc(sp)+'</div></div><div style="display:flex;gap:10px;align-items:center"><span class="v">'+fmtNum(r.vals[m.k])+' '+esc(m.unit)+'</span>'+(s==='ng'?chip('ng','Di luar spek'):s==='ok'?chip('ok','Sesuai'):'')+'</div></div>';
+  }).join('');
+  const checks=P.checks.map(c=>{const v=r.checks&&r.checks[c.k];
+    return '<div class="row"><div>'+esc(c.label)+'</div>'+(v==='ok'?chip('ok','OK'):v==='ng'?chip('ng','NG'):chip('mute','N/A'))+'</div>'}).join('');
+  const ver='';
+  const confirming=S.confirmDel===r.id;
+  const acts=[];
+  if(canEditReport(r))acts.push('<button class="btn" data-act="editreport" data-id="'+r.id+'">'+ic('edit')+'Edit laporan</button>');
+  acts.push('<button class="btn" data-act="copy" data-id="'+r.id+'">'+ic('copy')+'Salin ringkasan</button>');
+  if(me.role==='admin')acts.push(confirming?'<button class="btn danger" data-act="delyes" data-id="'+r.id+'">Ya, hapus laporan</button><button class="btn ghost" data-act="delno">Batal</button>':'<button class="btn danger" data-act="del" data-id="'+r.id+'">Hapus</button>');
+  return '<div class="shead g-'+P.group+'"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+(r.shift?' · Shift '+esc(r.shift):'')+'</div><h2 class="mono" style="font-family:var(--f-mono);font-size:19px;margin-top:4px">'+esc(r.wo)+'</h2><div style="margin-top:4px;font-size:15px;font-weight:500">'+esc(r.product)+'</div>'+(r.customer?'<div class="muted" style="font-size:14px">'+esc(r.customer)+'</div>':'')+'</div>'+
+     '<div style="display:flex;gap:10px;align-items:center">'+statusChip(r)+'<button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div></div>'+
+   '<dl class="meta">'+
+    [['Waktu',fmtFull(r.createdAt)],['Shift',r.shift],['Operator',r.operatorName],['No. PR',r.wo],['Produk',r.product],['Customer',r.customer||'—'],['Mesin',r.machine||'—'],['No. batch / roll',r.batch||'—']].map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd></div>').join('')+'</dl>'+
+   (meas?'<section><h3 style="margin-bottom:4px">Pengukuran</h3><div class="dl">'+meas+'</div></section>':'')+
+   '<section><h3 style="margin-bottom:4px">Pengecekan visual</h3><div class="dl">'+checks+'</div></section>'+
+   (r.note?'<section><h3 style="margin-bottom:6px">Catatan</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.note)+'</p></section>':'')+
+   editsHTML(r)+ver+'<div class="actions">'+acts.join('')+'</div>';
+}
+function renderModal(){
+  const root=$('#modalRoot');
+  const me=getMe();
+  if(!me){root.innerHTML='';return}
+  let inner='',kind='';
+  if(S.modal==='user'&&me.role==='admin'){inner=userFormHTML();kind='user'}
+  else if(S.modal==='memo'&&isSpv()){inner=memoFormHTML();kind='memo'}
+  else if(S.memoId){const m=S.memos.find(x=>x.id===S.memoId);if(m&&memoVisible(m)){inner=memoDetailHTML(m);kind='memodetail'}else{S.memoId=null}}
+  else if(S.detailId){
+    const r=S.reports.find(x=>x.id===S.detailId);
+    if(r&&allowedProcs().includes(r.proc)){inner=detailHTML(r);kind='detail'}
+    else{S.detailId=null}
+  }
+  if(!inner){root.innerHTML='';document.body.style.overflow='';return}
+  const old=root.querySelector('.sheet'),top=old?old.scrollTop:0;
+  root.innerHTML='<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="'+({user:'Akun pengguna',memo:'Memorandum baru',memodetail:'Memorandum'}[kind]||'Detail laporan')+'" tabindex="-1">'+inner+'</div></div>';
+  document.body.style.overflow='hidden';
+  const sh=root.querySelector('.sheet');
+  if(old){sh.scrollTop=top}else{sh.focus()}
+}
+function closeModal(){S.detailId=null;S.memoId=null;S.modal=null;S.userEdit=null;S.confirmDel=null;renderModal();if(S.view!=='form')render()}
+function summaryText(r){
+  if(PROC[r.proc]&&PROC[r.proc].kind==='log')return summaryLog(r);
+  const P=PROC[r.proc]||{label:r.proc,measures:[],checks:[]};
+  const L=['Laporan '+P.label,'Waktu: '+fmtFull(r.createdAt)+' (Shift '+r.shift+')','Operator: '+r.operatorName,'No. PR: '+r.wo+' · '+r.product+(r.customer?' · '+r.customer:''),'Hasil: '+(DISP[r.disp]||{}).t];
+  P.measures.forEach(m=>{if(r.vals&&r.vals[m.k]!=null)L.push('- '+m.label+': '+fmtNum(r.vals[m.k])+' '+m.unit+' ('+(mStatus(m,r.vals[m.k],r.targets&&r.targets[m.k])==='ng'?'di luar spek':'sesuai')+')')});
+  const ng=P.checks.filter(c=>r.checks&&r.checks[c.k]==='ng').map(c=>c.label);
+  if(ng.length)L.push('Temuan NG: '+ng.join('; '));
+  if(r.note)L.push('Catatan: '+r.note);
+  return L.join('\n');
+}
+async function copyText(t){
+  try{await navigator.clipboard.writeText(t);toast('Ringkasan disalin')}
+  catch(e){
+    const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;opacity:0';document.body.appendChild(ta);ta.select();
+    let ok=false;try{ok=document.execCommand('copy')}catch(x){}
+    ta.remove();toast(ok?'Ringkasan disalin':'Tidak bisa menyalin. Tahan dan salin teks secara manual.',!ok);
+  }
+}
+
+
+/* ================= TOLAKAN ================= */
+function tFiltered(){
+  const f=S.tf,q=f.q.trim().toLowerCase();
+  let cut=0;
+  if(f.range==='today')cut=startOfDay(new Date()).getTime();
+  else if(f.range!=='all')cut=Date.now()-Number(f.range)*86400000;
+  return visibleReports().filter(r=>{
+    if(!isTolakan(r))return false;
+    if(f.proc!=='all'&&r.proc!==f.proc)return false;
+    if(f.st!=='all'&&tolakanState(r)!==f.st)return false;
+    if(cut&&new Date(r.createdAt).getTime()<cut)return false;
+    if(q){const hay=[r.wo,r.product,r.customer,r.machine,r.operatorName,r.defect,r.size].join(' ').toLowerCase();if(!hay.includes(q))return false}
+    return true;
+  });
+}
+function tChip(r){
+  const st=tolakanState(r);
+  if(st==='na')return '<span class="faint" title="Tindakan tersedia untuk Bag Making, Spout, Slitting, dan Rewind">—</span>';
+  if(st==='wait')return chip('hold','Menunggu');
+  const t=TINDAKAN[st]||{c:'mute',t:st};return chip(t.c,t.t);
+}
+function tResultsHTML(){
+  const rs=tFiltered();
+  const ng=rs.reduce((a,r)=>a+(r.qn>0?r.qn:0),0),ngTxt=sumUnits(rs,r=>r.qn>0?r.qn:0),wait=rs.filter(r=>canAct(r)&&!r.tindakan).length,done=rs.filter(r=>canAct(r)&&r.tindakan).length;
+  const ct=$('#tcount');if(ct)ct.textContent=rs.length+' laporan tolakan';
+  const strip='<div class="panel strip"><div><div class="n">'+rs.length+'</div><div class="l">Laporan tolakan</div></div>'+
+    '<div><div class="n" style="color:'+(ng?'var(--ng)':'inherit')+'">'+ngTxt+'</div><div class="l">Total Not Pass</div></div>'+
+    '<div><div class="n" style="color:'+(wait?'var(--hold)':'inherit')+'">'+wait+'</div><div class="l">Menunggu tindakan</div></div>'+
+    '<div><div class="n">'+done+'</div><div class="l">Sudah ditindak</div></div></div>';
+  if(!rs.length)return strip+'<div class="panel empty"><b>Tidak ada tolakan</b><span>Ubah filter atau periode untuk melihat tolakan lain.</span></div>';
+  const rows=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
+    return '<tr data-act="open" data-id="'+r.id+'" tabindex="0" class="g-'+P.group+'"><td>'+fmtT(r.createdAt)+'</td><td>'+esc(r.shift||'—')+'</td>'+
+    '<td><span style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+'</span></td>'+
+    '<td class="mono">'+esc(r.wo)+'</td><td>'+esc(r.product)+'</td><td>'+esc(r.customer||'—')+'</td>'+
+    '<td style="max-width:260px;overflow-wrap:anywhere">'+esc(causeOf(r))+'</td>'+
+    '<td class="mono">'+(r.qn>0?fmtInt(r.qn):'—')+'</td><td>'+tChip(r)+'</td></tr>'}).join('');
+  const cards=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
+    return '<button class="card g-'+P.group+'" data-act="open" data-id="'+r.id+'"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+'</span>'+tChip(r)+'</div>'+
+    '<div class="r2"><span class="pdot"></span>'+esc(plabel(r,P))+'</div>'+
+    '<div style="font-size:14px;overflow-wrap:anywhere">'+esc(causeOf(r))+'</div>'+
+    '<div class="r3"><span>Shift '+esc(r.shift||'—')+'</span><span>'+esc(r.product)+'</span>'+(r.customer?'<span>'+esc(r.customer)+'</span>':'')+''+(r.qn>0?'<span class="mono" style="color:var(--ng)">'+fmtInt(r.qn)+' '+unitOf(r)+' NG</span>':'')+'<span>'+fmtT(r.createdAt)+'</span></div></button>'}).join('');
+  return strip+'<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Penyebab</th><th>Not Pass</th><th>Tindakan</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
+}
+function tolakanHTML(me){
+  const f=S.tf,sel=(v,c)=>c===v?' selected':'';
+  const opts='<option value="all"'+sel('all',f.proc)+'>Semua proses</option>'+GROUPS.map(g=>'<optgroup label="'+esc(g.label)+'">'+g.items.map(i=>'<option value="'+i+'"'+sel(i,f.proc)+'>'+esc(PROC[i].label)+'</option>').join('')+'</optgroup>').join('');
+  return '<div class="pagehead"><div><h1>Tolakan</h1><p class="sub" id="tcount">'+tFiltered().length+' laporan tolakan</p></div></div>'+
+   '<p class="muted" style="max-width:68ch">Rekap semua produk Not Pass atau di luar spesifikasi dari seluruh proses. Tindakan bisa diberikan untuk Bag Making, Spout, Slitting, dan Rewind.</p>'+
+   '<div class="filters">'+
+    '<div class="fld"><label for="tq">Cari</label><input class="in" id="tq" data-tf="q" type="search" placeholder="No. PR, produk, defect" value="'+esc(f.q)+'" autocomplete="off"></div>'+
+    '<div class="fld"><label for="tp">Proses</label><select class="in" id="tp" data-tf="proc">'+opts+'</select></div>'+
+    '<div class="fld"><label for="ts">Tindakan</label><select class="in" id="ts" data-tf="st"><option value="all"'+sel('all',f.st)+'>Semua</option><option value="wait"'+sel('wait',f.st)+'>Menunggu tindakan</option>'+Object.keys(TINDAKAN).map(k=>'<option value="'+k+'"'+sel(k,f.st)+'>'+TINDAKAN[k].t+'</option>').join('')+'</select></div>'+
+    '<div class="fld"><label for="tr">Periode</label><select class="in" id="tr" data-tf="range"><option value="today"'+sel('today',f.range)+'>Hari ini</option><option value="7"'+sel('7',f.range)+'>7 hari terakhir</option><option value="30"'+sel('30',f.range)+'>30 hari terakhir</option><option value="all"'+sel('all',f.range)+'>Semua</option></select></div>'+
+   '</div><div id="tresults" style="display:flex;flex-direction:column;gap:16px">'+tResultsHTML()+'</div>';
+}
+
+/* ================= PROGRESS SORTIR ================= */
+const SORT_ST={belum:{t:'Belum mulai',c:'mute'},proses:{t:'Berjalan',c:'hold'},selesai:{t:'Selesai',c:'ok'}};
+const sortLog=r=>Array.isArray(r.sortirLog)?r.sortirLog:[];
+function sortSum(r){
+  const L=sortLog(r);
+  if(L.length){const ok=L.reduce((a,e)=>a+(e.ok||0),0),ng=L.reduce((a,e)=>a+(e.ng||0),0);return {ok,ng,done:ok+ng}}
+  const d=(r.sortir&&r.sortir.done)||0;return {ok:d,ng:0,done:d};
+}
+const sortDone=r=>sortSum(r).done;
+function sortBar(r){
+  const tot=r.qn||0,d=sortDone(r),pct=tot?Math.min(100,Math.round(d/tot*100)):(sortSt(r)==='selesai'?100:0);
+  return '<span class="sprog"><span class="meter w" role="img" aria-label="Sortir '+pct+' persen"><span style="width:'+pct+'%"></span></span><span class="mono" style="font-size:13px">'+(tot?fmtInt(d)+' / '+fmtInt(tot)+' '+unitOf(r):pct+'%')+'</span></span>';
+}
+function sFiltered(){
+  const f=S.sf,q=f.q.trim().toLowerCase();
+  return sortirList().filter(r=>{
+    const st=sortSt(r);
+    if(f.st==='open'&&st==='selesai')return false;
+    if(['belum','proses','selesai'].includes(f.st)&&st!==f.st)return false;
+    if(q){const hay=[r.wo,r.product,r.customer,r.machine,r.operatorName,r.defect].join(' ').toLowerCase();if(!hay.includes(q))return false}
+    return true;
+  }).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+function sResultsHTML(){
+  const rs=sFiltered(),all=sortirList();
+  const c=k=>all.filter(r=>sortSt(r)===k).length,tot=all.reduce((a,r)=>a+(r.qn||0),0),dn=all.reduce((a,r)=>a+sortDone(r),0),okT=all.reduce((a,r)=>a+sortSum(r).ok,0),ngT=all.reduce((a,r)=>a+sortSum(r).ng,0);
+  const ct=$('#scount');if(ct)ct.textContent=rs.length+' laporan';
+  const strip='<div class="panel strip"><div><div class="n" style="color:'+(c('belum')?'var(--hold)':'inherit')+'">'+c('belum')+'</div><div class="l">Belum mulai</div></div>'+
+    '<div><div class="n">'+c('proses')+'</div><div class="l">Sedang berjalan</div></div>'+
+    '<div><div class="n">'+c('selesai')+'</div><div class="l">Selesai</div></div>'+
+    '<div><div class="n" style="font-size:'+(Object.keys(all.reduce((m,r)=>(m[unitOf(r)]=1,m),{})).length>1?'22px':'34px')+'">'+sumUnits(all,sortDone)+'</div><div class="l">Sudah disortir · '+sumUnits(all,r=>sortSum(r).ok)+' OK · '+sumUnits(all,r=>sortSum(r).ng)+' NG</div></div></div>';
+  if(!rs.length)return strip+'<div class="panel empty"><b>Tidak ada sortiran</b><span>Tolakan Bag Making, Spout, Slitting, dan Rewind yang perlu disortir akan muncul di sini otomatis.</span></div>';
+  const rows=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'bag'},st=SORT_ST[sortSt(r)];
+    return '<tr data-act="open" data-id="'+r.id+'" tabindex="0" class="g-'+P.group+'"><td>'+fmtT(r.createdAt)+'</td><td>'+esc(r.shift||'—')+'</td>'+
+    '<td><span style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+'</span></td>'+
+    '<td class="mono">'+esc(r.wo)+'</td><td>'+esc(r.product)+'</td><td>'+esc(r.customer||'—')+'</td>'+
+    '<td class="mono">'+(r.qn>0?fmtInt(r.qn):'—')+'</td><td class="mono">'+fmtInt(sortSum(r).ok)+'</td><td class="mono" style="color:'+(sortSum(r).ng?'var(--ng)':'inherit')+'">'+fmtInt(sortSum(r).ng)+'</td><td>'+sortBar(r)+'</td><td><span class="chips">'+chip(st.c,st.t)+(r.tindakan?'':chip('mute','Menunggu tindakan'))+'</span></td></tr>'}).join('');
+  const cards=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'bag'},st=SORT_ST[sortSt(r)];
+    return '<button class="card g-'+P.group+'" data-act="open" data-id="'+r.id+'"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+'</span>'+chip(st.c,st.t)+'</div>'+
+    '<div class="r2"><span class="pdot"></span>'+esc(plabel(r,P))+'</div><div>'+sortBar(r)+'</div>'+
+    '<div class="r3"><span class="mono">OK '+fmtInt(sortSum(r).ok)+'</span><span class="mono" style="color:var(--ng)">NG '+fmtInt(sortSum(r).ng)+'</span><span>Shift '+esc(r.shift||'—')+'</span><span>'+esc(r.product)+'</span>'+(r.customer?'<span>'+esc(r.customer)+'</span>':'')+'<span>'+fmtT(r.createdAt)+'</span></div></button>'}).join('');
+  return strip+'<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Not Pass</th><th>Sortir OK</th><th>Sortir NG</th><th>Progress</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
+}
+function sortirHTML(me){
+  const f=S.sf,sel=(v,c)=>c===v?' selected':'';
+  return '<div class="pagehead"><div><h1>Progress Sortir</h1><p class="sub" id="scount">'+sFiltered().length+' laporan</p></div></div>'+
+   '<p class="muted" style="max-width:68ch">Produk Not Pass dari Bag Making, Spout, Slitting, dan Rewind masuk ke sini otomatis. Satuannya mengikuti laporan (pcs atau roll). Buka laporan untuk mengisi jumlah yang sudah disortir dan menandai sortiran selesai.</p>'+
+   '<div class="filters">'+
+    '<div class="fld"><label for="sq">Cari</label><input class="in" id="sq" data-sf="q" type="search" placeholder="No. PR, produk, customer" value="'+esc(f.q)+'" autocomplete="off"></div>'+
+    '<div class="fld"><label for="ss">Status sortir</label><select class="in" id="ss" data-sf="st"><option value="open"'+sel('open',f.st)+'>Belum selesai</option><option value="belum"'+sel('belum',f.st)+'>Belum mulai</option><option value="proses"'+sel('proses',f.st)+'>Berjalan</option><option value="selesai"'+sel('selesai',f.st)+'>Selesai</option><option value="all"'+sel('all',f.st)+'>Semua</option></select></div>'+
+   '</div><div id="sresults" style="display:flex;flex-direction:column;gap:16px">'+sResultsHTML()+'</div>';
+}
+function sortirSection(r){
+  if(!(canAct(r)&&isTolakan(r)))return '';
+  if(r.tindakan&&r.tindakan!=='sortir')return '';
+  const st=sortSt(r),x=SORT_ST[st],sm=sortSum(r),L=sortLog(r).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.at).localeCompare(String(a.at))),can=canSortir(r),me=getMe();
+  const tot=r.qn||0,left=Math.max(0,tot-sm.done),un=unitOf(r);
+  const head='<div style="display:flex;flex-direction:column;gap:10px">'+'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+chip(x.c,x.t)+'<span class="muted" style="font-size:14px">'+(tot?'Sisa '+fmtInt(left)+' '+un:'')+'</span></div>'+((tot||st==='selesai')?sortBar(r):'')+
+    '<div class="qtygrid"><div class="qcell"><div class="faint" style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:600">Sortir OK</div><div class="n mono">'+fmtInt(sm.ok)+'</div></div>'+
+    '<div class="qcell"><div class="faint" style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:600">Sortir NG</div><div class="n mono" style="'+(sm.ng?'color:var(--ng)':'')+'">'+fmtInt(sm.ng)+'</div></div>'+
+    '<div class="qcell"><div class="faint" style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:600">Total disortir</div><div class="n mono">'+fmtInt(sm.done)+'</div></div></div></div>';
+  const rows=L.length?'<ul class="slog">'+L.map(e=>{
+    const mine=can&&(isSpv()||e.by===(me&&me.id)),cf=S.confirmSdel===e.id;
+    return '<li><div class="sl1"><b>'+esc(e.date?new Date(e.date+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'}):fmtT(e.at))+' · Shift '+esc(e.shift||'—')+'</b><span class="mono" style="font-size:14px">OK '+fmtInt(e.ok||0)+' · <span style="color:'+(e.ng?'var(--ng)':'inherit')+'">NG '+fmtInt(e.ng||0)+'</span></span></div>'+
+      '<div class="faint" style="font-size:13px">'+esc(e.name||'—')+' · dicatat '+fmtT(e.at)+'</div>'+(e.note?'<p style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;margin-top:4px">'+esc(e.note)+'</p>':'')+
+      (mine?'<div style="margin-top:6px">'+(cf?'<button class="btn sm danger" data-act="sdelyes" data-id="'+r.id+'" data-eid="'+e.id+'">Ya, hapus</button> <button class="btn sm ghost" data-act="sdelno">Batal</button>':'<button class="btn sm ghost" data-act="sdel" data-id="'+r.id+'" data-eid="'+e.id+'">Hapus input</button>')+'</div>':'')+'</li>'}).join('')+'</ul>':
+    (sm.done&&!L.length?'<p class="muted" style="font-size:14px">Data lama: '+fmtInt(sm.done)+' '+un+' sudah disortir (belum dipisah OK dan NG).</p>':'<p class="muted" style="font-size:14px">Belum ada input sortir.</p>');
+  const form=can&&st!=='selesai'?'<form data-form="sortirin" data-id="'+r.id+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)" novalidate>'+
+    '<h4 style="font-size:15px">Tambah input sortir</h4>'+
+    '<div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="fld"><label for="s_date">Tanggal</label><input class="in" id="s_date" name="sdate" type="date" value="'+ymd(new Date())+'"></div>'+
+    '<div class="fld"><label for="s_shift">Shift</label><select class="in" id="s_shift" name="sshift">'+['1','2','3'].map(v=>'<option value="'+v+'"'+(shiftOf(new Date())===v?' selected':'')+'>Shift '+v+'</option>').join('')+'</select></div></div>'+
+    '<div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div class="fld"><label for="s_ok">Sortir OK ('+un+')</label><input class="in mono" id="s_ok" name="sok" inputmode="numeric" autocomplete="off"></div>'+
+    '<div class="fld"><label for="s_ng">Sortir NG ('+un+')</label><input class="in mono" id="s_ng" name="sng" inputmode="numeric" autocomplete="off"></div></div>'+
+    '<div class="fld"><label for="s_note">Keterangan (opsional)</label><textarea class="in" id="s_note" name="snote" rows="2"></textarea></div>'+
+    '<div id="sErr" class="err" role="alert" hidden></div>'+
+    '<div><button class="btn pri" type="submit">Simpan input</button></div></form>':'';
+  const fin=can?'<div class="actions" style="margin-top:12px">'+(st==='selesai'?'<button class="btn" data-act="sreopen" data-id="'+r.id+'">Buka lagi sortiran</button>':'<button class="btn" data-act="sfinish" data-id="'+r.id+'">'+ic('check')+'Tandai sortir selesai</button>')+'</div>':'';
+  return '<section class="panel pad"><h3 style="margin-bottom:2px">Progress sortir</h3><p class="muted" style="font-size:13px;margin-bottom:10px">Masuk otomatis karena ada produk Not Pass. Input bisa ditambah berkali-kali oleh shift atau operator yang berbeda.</p>'+head+'<h4 style="font-size:15px;margin:14px 0 6px">Riwayat input</h4>'+rows+form+fin+'</section>';
+}
+async function putSortir(r,mut){
+  const cur=S.reports.find(x=>x.id===r.id)||r,me=getMe(),now=new Date().toISOString();
+  const doc=Object.assign({},cur);const log=sortLog(cur).slice();
+  const out=mut(doc,log,now,me);if(out===false)return false;
+  doc.sortirLog=log;
+  const sm=sortSum(doc),old=cur.sortir||{};let st=old.status||'belum';
+  if(doc.__forceSt){st=doc.__forceSt;delete doc.__forceSt}
+  else if(st!=='selesai'||!((doc.qn||0)?sm.done>=doc.qn:true))st=sm.done>0?'proses':'belum';
+  if(st==='selesai'&&!old.finishedAt&&!doc.sortir)doc.sortir=old;
+  doc.sortir={status:st,done:sm.done,by:me.id,name:me.name,at:now,startedAt:old.startedAt||(sm.done>0?now:null),finishedAt:st==='selesai'?(old.finishedAt||now):null};
+  return safe(()=>put('reports',doc));
+}
+async function submitSortirIn(f){
+  const r=S.reports.find(x=>x.id===f.dataset.id);if(!r||!canSortir(r))return;
+  const ok=toInt(f.elements['sok'].value),ng=toInt(f.elements['sng'].value),okN=isNaN(ok)?0:ok,ngN=isNaN(ng)?0:ng;
+  if(okN+ngN<=0){showErr('sErr','Isi jumlah Sortir OK atau Sortir NG.');return}
+  const tot=r.qn||0,sum=sortSum(S.reports.find(x=>x.id===r.id)||r).done;
+  if(tot&&sum+okN+ngN>tot){showErr('sErr','Total disortir melebihi Not Pass ('+fmtInt(tot)+' '+unitOf(r)+'). Sisa yang bisa diinput: '+fmtInt(Math.max(0,tot-sum))+' '+unitOf(r)+'.');return}
+  const date=f.elements['sdate'].value||ymd(new Date()),shift=f.elements['sshift'].value,note=f.elements['snote'].value.trim();
+  const res=await putSortir(r,(doc,log,now,me)=>{
+    log.push({id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),date,shift,ok:okN,ng:ngN,note,by:me.id,name:me.name,at:now});
+    if(tot&&sum+okN+ngN>=tot)doc.__forceSt='selesai';
+  });
+  if(res){toast('Input sortir disimpan');renderModal();updateChrome()}
+}
+
+/* ================= MEMORANDUM ================= */
+function memoHTML(me){
+  const ms=myMemos(),sp=isSpv();
+  const head='<div class="pagehead"><div><h1>Memorandum</h1><p class="sub">'+(sp?'Pesan resmi dari QC ke operator.':'Memorandum yang ditujukan kepada Anda.')+'</p></div>'+(sp?'<button class="btn pri" data-act="memonew">'+ic('plus')+'Buat memorandum</button>':'')+'</div>';
+  if(!ms.length)return head+'<div class="panel empty"><b>Belum ada memorandum</b><span>'+(sp?'Buat memorandum pertama untuk operator.':'Memorandum dari QC akan muncul di sini.')+'</span></div>';
+  const stChip=m=>{
+    if(sp){const n=(m.toIds||[]).length,r=(m.toIds||[]).filter(id=>isRead(m,id)).length;return chip(r===n&&n>0?'ok':'mute',r+'/'+n+' dibaca')}
+    return isRead(m,me.id)?chip('mute','Dibaca'):chip('info','Baru');
+  };
+  const unread=m=>!sp&&!isRead(m,me.id);
+  const rows=ms.map(m=>'<tr data-act="openmemo" data-id="'+m.id+'" tabindex="0"><td>'+fmtT(m.createdAt)+'</td><td><div class="cell2"><b style="font-weight:'+(unread(m)?600:500)+'">'+esc(m.subject)+'</b><small class="mono">'+esc(m.no)+'</small></div></td><td>'+esc(sp?toLabel(m):m.fromName)+'</td><td>'+chip(PRIO[m.prio||'biasa'].c,PRIO[m.prio||'biasa'].t)+'</td><td>'+stChip(m)+'</td></tr>').join('');
+  const cards=ms.map(m=>'<button class="card" data-act="openmemo" data-id="'+m.id+'"><div class="r1"><b style="font-weight:'+(unread(m)?600:500)+'">'+esc(m.subject)+'</b>'+stChip(m)+'</div><div class="r3"><span>'+esc(sp?'Kepada: '+toLabel(m):'Dari: '+m.fromName)+'</span><span>'+fmtT(m.createdAt)+'</span>'+(m.prio==='penting'?chip('hold','Penting'):'')+'</div></button>').join('');
+  return head+'<div class="panel tblwrap"><table><thead><tr><th>Tanggal</th><th>Perihal</th><th>'+(sp?'Kepada':'Dari')+'</th><th>Prioritas</th><th>'+(sp?'Dibaca':'Status')+'</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
+}
+function memoFormHTML(){
+  const ops=S.users.filter(u=>u.role==='operator').sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  const gOf=u=>Array.from(new Set((u.procs||[]).map(p=>PROC[p]&&PROC[p].group).filter(Boolean))).join(' ');
+  const chips=[['all','Semua operator']].concat(GROUPS.map(g=>[g.id,g.label])).map(x=>'<button type="button" class="btn sm" data-act="memosel" data-g="'+x[0]+'">'+esc(x[1])+'</button>').join('')+'<button type="button" class="btn sm ghost" data-act="memosel" data-g="none">Kosongkan</button>';
+  const list=ops.length?'<div class="pgrid">'+ops.map(u=>'<label class="opt"><input type="checkbox" name="to" value="'+u.id+'" data-g="'+gOf(u)+'"><span>'+esc(u.name)+' <span class="faint" style="font-size:13px">· '+esc((u.procs||[]).filter(p=>PROC[p]).map(p=>PROC[p].label).join(', ')||'tanpa proses')+'</span></span></label>').join('')+'</div>':'<p class="muted">Belum ada akun operator. Tambahkan di menu Pengguna.</p>';
+  return '<div class="shead"><h2>Memorandum baru</h2><button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div>'+
+   '<form data-form="memo" novalidate style="display:flex;flex-direction:column;gap:16px">'+
+    '<div class="fld"><span class="lbl">Kepada <span class="req">*</span></span><div style="display:flex;flex-wrap:wrap;gap:8px">'+chips+'</div>'+list+'</div>'+
+    '<div class="fld"><label for="m_subj">Perihal <span class="req">*</span></label><input class="in" id="m_subj" name="subject" autocomplete="off" maxlength="140"></div>'+
+    '<div class="fld"><label for="m_body">Isi memorandum <span class="req">*</span></label><textarea class="in" id="m_body" name="body" style="min-height:170px"></textarea></div>'+
+    '<div class="fld"><span class="lbl" id="lbl_prio">Prioritas</span>'+segTwo('prio',[['biasa','Biasa','na',true],['penting','Penting','ng']])+'</div>'+
+    '<div id="memoErr" class="err" role="alert" hidden></div>'+
+    '<div class="actions"><button type="submit" class="btn pri">'+ic('mail')+'Kirim memorandum</button><button type="button" class="btn ghost" data-act="closemodal">Batal</button></div>'+
+   '</form>';
+}
+async function submitMemo(f){
+  const me=getMe();if(!isSpv())return;
+  const subject=f.elements['subject'].value.trim(),body=f.elements['body'].value.trim();
+  const to=$$('input[name="to"]:checked',f).map(x=>x.value);
+  let e='';
+  if(!to.length)e='Pilih minimal satu operator penerima.';
+  else if(!subject)e='Isi perihal memorandum.';
+  else if(!body)e='Isi isi memorandum.';
+  if(e)return showErr('memoErr',e);
+  const now=new Date(),id=uid('m');
+  const yy=String(now.getFullYear()).slice(2)+pad(now.getMonth()+1)+pad(now.getDate());
+  const names=to.map(i=>{const u=S.users.find(x=>x.id===i);return u?u.name:'—'});
+  const ck=f.querySelector('input[name="prio"]:checked');
+  const doc={id,no:'MEMO-'+yy+'-'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds()),createdAt:now.toISOString(),fromId:me.id,fromName:me.name,fromRole:me.role,toIds:to,toNames:names,subject,body,prio:ck?ck.value:'biasa'};
+  const btn=f.querySelector('button[type=submit]');btn.disabled=true;
+  const ok=await safe(()=>put('memos',doc));
+  btn.disabled=false;
+  if(ok){toast('Memorandum terkirim ke '+to.length+' operator');S.modal=null;renderModal();render()}
+}
+function memoDetailHTML(m){
+  const me=getMe(),sp=isSpv();
+  const canDel=me.role==='admin'||m.fromId===me.id;
+  const confirming=S.confirmDel===m.id;
+  const recips=(m.toIds||[]).map((id,i)=>{const u=S.users.find(x=>x.id===id);const rd=S.memoReads.find(x=>x.memoId===m.id&&x.userId===id);
+    return '<div class="row"><div>'+esc(u?u.name:((m.toNames||[])[i]||'—'))+'</div><div>'+(rd?'<span class="vmark">'+ic('check')+'Dibaca '+esc(fmtT(rd.at))+'</span>':'<span class="faint">Belum dibaca</span>')+'</div></div>'}).join('');
+  const frm=S.users.find(x=>x.id===m.fromId);
+  const fromRole=(ROLES[(frm&&frm.role)||m.fromRole]||{t:''}).t;
+  return '<div class="shead"><div><div class="eyebrow">Memorandum</div><h2 class="mono" style="font-family:var(--f-mono);font-size:19px;margin-top:4px">'+esc(m.no)+'</h2></div>'+
+     '<div style="display:flex;gap:10px;align-items:center">'+chip(PRIO[m.prio||'biasa'].c,PRIO[m.prio||'biasa'].t)+'<button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div></div>'+
+   '<dl class="meta"><div><dt>Dari</dt><dd>'+esc(m.fromName)+(fromRole?' · '+esc(fromRole):'')+'</dd></div><div><dt>Tanggal</dt><dd>'+esc(fmtFull(m.createdAt))+'</dd></div><div><dt>Kepada</dt><dd>'+esc(toLabel(m))+'</dd></div></dl>'+
+   '<section><h2 style="margin-bottom:10px;overflow-wrap:anywhere">'+esc(m.subject)+'</h2><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65">'+esc(m.body)+'</div></section>'+
+   (sp?'<section><h3 style="margin-bottom:4px">Status baca</h3><div class="dl">'+recips+'</div></section>':'')+
+   (canDel?'<div class="actions">'+(confirming?'<button class="btn danger" data-act="memodelyes" data-id="'+m.id+'">Ya, hapus memorandum</button><button class="btn ghost" data-act="delno">Batal</button>':'<button class="btn danger" data-act="memodel" data-id="'+m.id+'">Hapus</button>')+'</div>':'');
+}
+
+/* ================= PROFIL & KINERJA ================= */
+/* Operator melihat kinerjanya sendiri. QC Ass SPV ke atas melihat semua operator. */
+function dmGet(){if(!S.dm){const n=new Date();S.dm={y:n.getFullYear(),m:n.getMonth()}}return S.dm}
+
+/* ================= PENGGUNA ================= */
+function usersHTML(me){
+  const us=S.users.slice().sort((a,b)=>(a.role===b.role?String(a.name).localeCompare(String(b.name)):rankOf(b)-rankOf(a)));
+  const rows=us.map(u=>{
+    const procs=procsText(u);
+    return '<tr data-act="useredit" data-id="'+u.id+'" tabindex="0"><td><div class="cell2"><b style="font-weight:600">'+esc(u.name)+'</b><small class="mono">'+esc(u.username)+'</small></div></td><td>'+roleChip(u)+(u.demo?' '+chip('mute','Contoh'):'')+'</td><td>'+esc(procs)+'</td></tr>';
+  }).join('');
+  const cards=us.map(u=>{
+    const procs=procsText(u);
+    return '<button class="card" data-act="useredit" data-id="'+u.id+'"><div class="r1"><b>'+esc(u.name)+'</b>'+roleChip(u)+'</div><div class="r3"><span class="mono">'+esc(u.username)+'</span>'+(u.demo?chip('mute','Contoh'):'')+'</div><div class="muted" style="font-size:14px">'+esc(procs)+'</div></button>';
+  }).join('');
+  return '<div class="pagehead"><div><h1>Pengguna</h1><p class="sub">Tiap operator punya akun sendiri dan hanya melihat proses yang Anda izinkan.</p></div><button class="btn pri" data-act="useredit" data-id="new">'+ic('plus')+'Tambah akun</button></div>'+
+   '<div class="panel tblwrap"><table><thead><tr><th>Nama</th><th>Peran</th><th>Akses proses</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
+}
+function userFormHTML(){
+  const u=S.userEdit||{},isNew=!u.id,me=getMe();
+  const adm=(u.role||'operator')!=='operator';
+  const groups=GROUPS.map(g=>'<div class="g-'+g.id+'"><div class="eyebrow" style="display:flex;align-items:center;gap:8px;margin:12px 0 4px"><span class="pdot"></span>'+esc(g.label)+'</div><div class="pgrid">'+
+    g.items.map(i=>'<label class="opt"><input type="checkbox" name="procs" value="'+i+'"'+((u.procs||[]).includes(i)?' checked':'')+'>'+esc(PROC[i].label)+'</label>').join('')+'</div></div>').join('');
+  const self=u.id===me.id;
+  return '<div class="shead"><h2>'+(isNew?'Akun baru':'Ubah akun')+'</h2><button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div>'+
+   '<form data-form="user" novalidate style="display:flex;flex-direction:column;gap:16px">'+
+    '<div class="fld"><label for="un">Nama lengkap</label><input class="in" id="un" name="name" value="'+esc(u.name||'')+'" autocomplete="off"></div>'+
+    '<div class="fld"><label for="uu">Username</label><input class="in mono" id="uu" name="username" value="'+esc(u.username||'')+'" autocapitalize="none" spellcheck="false" autocomplete="off"></div>'+
+    '<div class="fld"><label for="up">PIN (4–6 angka)'+(isNew?'':' <span class="faint" style="font-weight:400">— kosongkan jika tidak diganti</span>')+'</label><input class="in mono" id="up" name="pin" inputmode="numeric" autocomplete="off" placeholder="'+(isNew?'':'••••')+'"></div>'+
+    '<div class="fld"><label for="ur">Peran</label><select class="in" id="ur" name="role" data-role'+(self?' disabled':'')+'>'+roleOptions(u.role)+'</select></div>'+
+    '<div id="procBox"'+(adm?' hidden':'')+'><div class="lbl" style="font-size:13px;font-weight:600;color:var(--fg-2)">Proses yang boleh dibuka</div>'+groups+'</div>'+
+    '<p id="admNote" class="muted" style="font-size:14px"'+(adm?'':' hidden')+'>'+esc(roleNote(u.role))+'</p>'+
+    '<div id="userErr" class="err" role="alert" hidden></div>'+
+    '<div class="actions"><button type="submit" class="btn pri">Simpan</button>'+
+     (!isNew&&!self?(S.confirmDel===u.id?'<button type="button" class="btn danger" data-act="userdelyes" data-id="'+u.id+'">Ya, hapus akun</button><button type="button" class="btn ghost" data-act="delno">Batal</button>':'<button type="button" class="btn danger" data-act="userdel" data-id="'+u.id+'">Hapus akun</button>'):'')+
+    '</div></form>';
+}
+async function submitUser(f){
+  const me=getMe(),u=S.userEdit||{},isNew=!u.id;
+  const name=f.elements['name'].value.trim(),un=f.elements['username'].value.trim().toLowerCase(),pin=f.elements['pin'].value.trim();
+  const roleEl=f.elements['role'];
+  const role=roleEl.disabled?u.role:roleEl.value;
+  const procs=$$('input[name="procs"]:checked',f).map(x=>x.value);
+  let e='';
+  if(!name)e='Isi nama lengkap.';
+  else if(!/^[a-z0-9._-]{3,20}$/.test(un))e='Username 3–20 karakter: huruf kecil, angka, titik, strip, atau garis bawah.';
+  else if(S.users.some(x=>x.id!==u.id&&String(x.username).toLowerCase()===un))e='Username sudah dipakai akun lain.';
+  else if((isNew||pin)&&!/^\d{4,6}$/.test(pin))e='PIN harus 4–6 angka.';
+  else if(role==='operator'&&!procs.length)e='Pilih minimal satu proses untuk operator.';
+  if(e)return showErr('userErr',e);
+  const id=isNew?uid('u'):u.id;
+  const doc={id,name,username:un,pin:pin?pinHash(id,pin):u.pin,role,procs:role!=='operator'?[]:procs};
+  if(u.demo)doc.demo=true;
+  const ok=await safe(()=>put('users',doc));
+  if(ok){toast(isNew?'Akun dibuat':'Akun disimpan');S.modal=null;S.userEdit=null;S.confirmDel=null;renderModal();render()}
+}
+
+/* ================= TOAST ================= */
+let toastTimer=null;
+function toast(msg,isErr){
+  const r=$('#toastRoot');r.innerHTML='<div class="toast'+(isErr?' err':'')+'" role="status">'+esc(msg)+'</div>';
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>{r.innerHTML=''},isErr?6000:3000);
+}
+
+/* ================= EVENTS ================= */
+document.addEventListener('click',async e=>{
+  const el=e.target.closest('[data-act]');if(!el)return;
+  const act=el.dataset.act,id=el.dataset.id;
+  if(act==='scrim'){if(e.target===el)closeModal();return}
+  switch(act){
+    case 'dmon':{const d=+el.dataset.d,dm=dmGet(),t=new Date(dm.y,dm.m+d,1),n=new Date();if(t>new Date(n.getFullYear(),n.getMonth(),1))break;S.dm={y:t.getFullYear(),m:t.getMonth()};render();break}
+    case 'pinshow':{const i=$('#'+el.dataset.for);if(i){const show=i.type==='password';i.type=show?'text':'password';el.setAttribute('aria-label',show?'Sembunyikan PIN':'Tampilkan PIN')}break}
+    case 'nav':if(S.view==='form'){captureDraft();saveDrafts()}S.view=el.dataset.v;S.confirmDraft=null;render();window.scrollTo(0,0);break;
+    case 'newform':{
+      if(!canCreate())break;
+      if(S.view==='form')captureDraft();
+      if(visibleDrafts().length>=MAXDRAFT){toast('Maksimal '+MAXDRAFT+' laporan sekaligus. Simpan atau buang salah satu dulu.',true);break}
+      newDraft(el.dataset.p);S.view='form';saveDrafts();render();window.scrollTo(0,0);break}
+    case 'editreport':{
+      const r=S.reports.find(x=>x.id===id);if(!r||!canEditReport(r))break;
+      if(S.view==='form')captureDraft();
+      S.detailId=null;S.confirmDel=null;renderModal();
+      const ex=S.drafts.find(d=>d.editId===id);
+      if(ex){openDraft(ex.id);break}
+      if(visibleDrafts().length>=MAXDRAFT){toast('Maksimal '+MAXDRAFT+' laporan sekaligus. Simpan atau buang salah satu dulu.',true);break}
+      const d=newDraft(r.proc,reportToFormData(r));
+      d.editId=r.id;d.editNo=r.wo;d.base=(r.edits||[]).length;
+      d.touched=PROC[r.proc].kind==='log'?{kts:true,disp:false}:{disp:r.disp!==(r.auto==='ng'?'hold':'lulus'),kts:false};
+      S.view='form';saveDrafts();render();window.scrollTo(0,0);break}
+    case 'draftgo':openDraft(id);break;
+    case 'draftx':askDiscard(id);break;
+    case 'draftadd':if(S.view==='form'){captureDraft();saveDrafts()}S.view='new';S.confirmDraft=null;render();window.scrollTo(0,0);break;
+    case 'draftdup':{
+      const d=curDraft();if(!d)break;
+      captureDraft();
+      if(visibleDrafts().length>=MAXDRAFT){toast('Maksimal '+MAXDRAFT+' laporan sekaligus. Simpan atau buang salah satu dulu.',true);break}
+      const seed={};['date','shift','wo','product','customer','size'].forEach(k=>{if(d.data&&d.data[k]!=null&&d.data[k]!=='')seed[k]=d.data[k]});
+      newDraft(d.proc,seed);S.view='form';saveDrafts();render();window.scrollTo(0,0);toast('Data produk disalin ke laporan baru');break}
+    case 'cancelform':askDiscard(S.activeDraft);break;
+    case 'logout':if(S.view==='form'){captureDraft();saveDrafts()}logout();break;
+    case 'open':S.detailId=id;S.confirmDel=null;renderModal();break;
+    case 'closemodal':closeModal();break;
+    case 'sdel':S.confirmSdel=el.dataset.eid;renderModal();break;
+    case 'sdelno':S.confirmSdel=null;renderModal();break;
+    case 'sdelyes':{const r=S.reports.find(x=>x.id===id);S.confirmSdel=null;if(!r||!canSortir(r))break;const eid=el.dataset.eid;
+      const ok=await putSortir(r,(doc,log)=>{const i=log.findIndex(e=>e.id===eid);if(i<0)return false;log.splice(i,1)});
+      if(ok){toast('Input sortir dihapus');renderModal();updateChrome()}break}
+    case 'sfinish':{const r=S.reports.find(x=>x.id===id);if(!r||!canSortir(r))break;if(await putSortir(r,doc=>{doc.__forceSt='selesai'})){toast('Sortir ditandai selesai');renderModal();updateChrome()}break}
+    case 'sreopen':{const r=S.reports.find(x=>x.id===id);if(!r||!canSortir(r))break;if(await putSortir(r,doc=>{doc.__forceSt=sortSum(doc).done>0?'proses':'belum'})){toast('Sortir dibuka lagi');renderModal();updateChrome()}break}
+    case 'copy':{const r=S.reports.find(x=>x.id===id);if(r)copyText(summaryText(r));break}
+    case 'del':S.confirmDel=id;renderModal();break;
+    case 'delno':S.confirmDel=null;renderModal();break;
+    case 'delyes':{
+      const ok=await safe(()=>remove('reports',id));
+      if(ok){toast('Laporan dihapus');S.detailId=null;S.confirmDel=null;renderModal()}
+      break}
+    case 'export':exportCsv();break;
+    case 'openmemo':{
+      S.memoId=id;S.detailId=null;S.confirmDel=null;renderModal();
+      const m=S.memos.find(x=>x.id===id),me=getMe();
+      if(m&&!isSpv()&&(m.toIds||[]).includes(me.id)&&!isRead(m,me.id))safe(()=>put('memoReads',{id:id+'_'+me.id,memoId:id,userId:me.id,at:new Date().toISOString()}));
+      break}
+    case 'memonew':S.modal='memo';S.confirmDel=null;renderModal();break;
+    case 'memosel':{
+      const g=el.dataset.g;
+      $$('input[name="to"]').forEach(c=>{c.checked=g==='all'?true:g==='none'?false:(c.dataset.g||'').split(' ').includes(g)?true:c.checked});
+      break}
+    case 'memodel':S.confirmDel=id;renderModal();break;
+    case 'memodelyes':{
+      const ok=await safe(async()=>{for(const x of S.memoReads.filter(x=>x.memoId===id))await remove('memoReads',x.id);await remove('memos',id)});
+      if(ok){toast('Memorandum dihapus');S.memoId=null;S.confirmDel=null;renderModal();render()}
+      break}
+    case 'useredit':{
+      S.userEdit=id==='new'?{}:Object.assign({},S.users.find(x=>x.id===id));S.confirmDel=null;S.modal='user';renderModal();break}
+    case 'userdel':S.confirmDel=id;renderModal();break;
+    case 'userdelyes':{
+      const admins=S.users.filter(x=>x.role==='admin');
+      const t=S.users.find(x=>x.id===id);
+      if(t&&t.role==='admin'&&admins.length<=1){showErr('userErr','Tidak bisa menghapus admin terakhir.');break}
+      const ok=await safe(()=>remove('users',id));
+      if(ok){toast('Akun dihapus');S.modal=null;S.userEdit=null;S.confirmDel=null;renderModal();render()}
+      break}
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&(S.detailId||S.modal||S.memoId)){closeModal();return}
+  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('tr[data-act]')){e.preventDefault();e.target.click()}
+});
+document.addEventListener('submit',e=>{
+  const f=e.target.closest('form[data-form]');if(!f)return;
+  e.preventDefault();
+  const k=f.dataset.form;
+  if(k==='login')doLogin(f);
+  else if(k==='setup')doSetup(f);
+  else if(k==='report')submitReport(f);
+  else if(k==='user')submitUser(f);
+  else if(k==='tindakan')submitTindakan(f);
+  else if(k==='sortirin')submitSortirIn(f);
+  else if(k==='memo')submitMemo(f);
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.filter==='q'){S.filters.q=t.value;$('#results').innerHTML=resultsHTML();return}
+  if(t.dataset&&t.dataset.sf==='q'){S.sf.q=t.value;$('#sresults').innerHTML=sResultsHTML();return}
+  if(t.dataset&&t.dataset.tf==='q'){S.tf.q=t.value;$('#tresults').innerHTML=tResultsHTML();return}
+  if(t.closest&&t.closest('#rform')){updateForm();queueSave()}
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset&&t.dataset.filter&&t.dataset.filter!=='q'){S.filters[t.dataset.filter]=t.value;$('#results').innerHTML=resultsHTML();return}
+  if(t.dataset&&t.dataset.sf&&t.dataset.sf!=='q'){S.sf[t.dataset.sf]=t.value;$('#sresults').innerHTML=sResultsHTML();const c=$('#scount');if(c)c.textContent=sFiltered().length+' laporan';return}
+  if(t.dataset&&t.dataset.tf&&t.dataset.tf!=='q'){S.tf[t.dataset.tf]=t.value;$('#tresults').innerHTML=tResultsHTML();return}
+  if(t.closest&&t.closest('#rform')){
+    if(t.name==='disp')S.dispTouched=true;
+    if(t.name==='kts')S.ktsTouched=true;
+    updateForm();queueSave();return;
+  }
+  if(t.matches&&t.matches('select[data-role]')){
+    const adm=t.value!=='operator';
+    $('#procBox').hidden=adm;$('#admNote').hidden=!adm;$('#admNote').textContent=roleNote(t.value);
+  }
+});
+
+window.addEventListener('pagehide',()=>{if(S.view==='form'){captureDraft();saveDrafts()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.view==='form'){captureDraft();saveDrafts()}});
+init();
+})();
+</script>
