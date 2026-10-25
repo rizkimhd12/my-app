@@ -1,8 +1,4 @@
-<!doctype html>
-<html lang="id">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>i-QC</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -223,6 +219,7 @@ tbody tr:last-child td{border-bottom:0}
 .seg label{display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid var(--line);border-radius:8px;background:var(--surface);font-weight:600;color:var(--fg-2);cursor:pointer;font-size:14px}
 .seg input:checked+label.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
 .seg input:checked+label.ng{background:var(--ng-bg);border-color:var(--ng);color:var(--ng)}
+.seg input:checked+label.bl{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
 .seg input:checked+label.na{background:var(--surface-2);border-color:var(--fg-3);color:var(--fg)}
 .seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:2px}
 .seg .cell{position:relative}
@@ -289,6 +286,9 @@ tbody tr:last-child td{border-bottom:0}
 .meter.w{width:96px;height:8px}
 .ncell{max-width:240px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:14px}
 .ncard{margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-size:14px;text-align:left;overflow-wrap:anywhere}
+.rollrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;padding:12px 0;border-top:1px solid var(--line)}
+@media(max-width:560px){.rollrow{grid-template-columns:1fr 1fr}.rollrow>.btn{justify-self:end}}
+.agchk{width:20px;height:20px;accent-color:var(--accent)}
 .chips{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
 .sprog{display:flex;align-items:center;gap:10px;white-space:nowrap}
 .slog{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
@@ -342,15 +342,11 @@ tr[data-act="profopen"]:hover td{background:var(--surface-2)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
-</head>
-<body>
-
 
 <div id="app"></div>
 <div id="modalRoot"></div>
 <div id="toastRoot" aria-live="polite"></div>
 
-<script src="config.js"></script>
 <script>
 (function(){
 'use strict';
@@ -379,20 +375,7 @@ const PROC={
       {k:'cacat',label:'Tidak ada streak, dot, scumming, atau pinhole'},
       {k:'treat',label:'Treatment film sesuai (dyne test)'},
       {k:'unwind',label:'Arah unwinding sesuai spesifikasi'}]},
-  lam_dry:{label:'Dry Laminasi',code:'LMD',group:'laminasi',
-    measures:[
-      {k:'gsm',label:'Gramatur adhesive',unit:'g/m²',min:1.8,max:2.5},
-      {k:'oven',label:'Suhu oven',unit:'°C',min:60,max:85},
-      {k:'nip',label:'Tekanan nip',unit:'bar'},
-      {k:'bond',label:'Kekuatan ikat (bond)',unit:'N/15 mm',min:1.5}],
-    checks:[
-      {k:'mat',label:'Material dan layer sesuai order'},
-      {k:'mix',label:'Rasio adhesive : hardener sesuai'},
-      {k:'tunnel',label:'Tidak ada tunneling atau gelembung udara'},
-      {k:'wrinkle',label:'Tidak ada kerut'},
-      {k:'regis',label:'Registrasi cetak terjaga'},
-      {k:'solv',label:'Tidak ada bau solvent berlebih'},
-      {k:'roll',label:'Gulungan rata, label sesuai'}]},
+  lam_dry:{label:'Dry Laminasi',code:'LMD',group:'laminasi',aging:true,dry:true,unit:'roll',measures:[],checks:[]},
   lam_ext:{label:'Ekstrusi Laminasi',code:'LME',group:'laminasi',
     measures:[
       {k:'die',label:'Suhu die',unit:'°C',min:285,max:325},
@@ -415,12 +398,23 @@ const PROC={
 const IDS=Object.keys(PROC);
 const DISP={lulus:{t:'Lulus',c:'ok'},hold:{t:'Hold',c:'hold'},reject:{t:'Reject',c:'ng'}};
 /* Tindakan SPV ke atas untuk produk label biru / merah */
-const TINDAKAN={diterima:{t:'Diterima',c:'ok',d:'lulus'},sortir:{t:'Sortir',c:'hold',d:'hold'},dimusnahkan:{t:'Dimusnahkan',c:'ng',d:'reject'}};
+const TINDAKAN={diterima:{t:'Diterima',c:'ok',d:'lulus'},sortir:{t:'Sortir',c:'hold',d:'hold'},sortir_insp:{t:'Sortir di Inspeksi',c:'hold',d:'hold'},sortir_bm:{t:'Sortir di BM',c:'hold',d:'hold'},sortir_slit:{t:'Sortir di Slitting',c:'hold',d:'hold'},dimusnahkan:{t:'Dimusnahkan',c:'ng',d:'reject'}};
+const LOG_T=['diterima','sortir','dimusnahkan'],DRY_T=['diterima','sortir_insp','sortir_bm','sortir_slit','dimusnahkan'];
+const tOpts=r=>r&&r.vid?DRY_T:LOG_T,isSortirT=t=>t==='sortir'||/^sortir_/.test(t||'');
 const MACHINES=['SBM 600','ST 30-2','TOTANI 1','TOTANI 2','TOTANI 4','IMAC'];
 const toInt=s=>{const d=String(s==null?'':s).replace(/\D/g,'');return d===''?NaN:parseInt(d,10)};
 const fmtInt=n=>(n==null||isNaN(n))?'—':Number(n).toLocaleString('id-ID');
 const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-const qtyCell=r=>r.qp==null?'—':fmtInt(r.qp+(r.qn||0))+(r.qn>0?' <span style="color:var(--ng)">('+fmtInt(r.qn)+' NG)</span>':'');
+function qtyParts(r){
+  if(r.rolls&&r.rolls.length){
+    const n=r.rolls.length,ng=r.rolls.filter(rollNG).length,bl=r.rolls.filter(k=>!rollNG(k)&&((k.check?k.check.status:k.s)==='biru')).length,ok=n-ng-bl,m=r.rolls.reduce((a,k)=>a+(k.m||0),0);
+    return {tot:n,unit:'roll',ng,det:[ok?'Passed '+fmtInt(ok):'',bl?'Label Biru '+fmtInt(bl):'',ng?'Not Pass '+fmtInt(ng):'',fmtInt(m)+' m'].filter(Boolean)};
+  }
+  if(r.qp==null)return null;
+  return {tot:r.qp+(r.qn||0),unit:unitOf(r),ng:r.qn||0,det:['Pass '+fmtInt(r.qp),'Not Pass '+fmtInt(r.qn||0)]};
+}
+const qtyCell=r=>{const q=qtyParts(r);return q?fmtInt(q.tot)+' '+q.unit:'—'};
+const qtyText=r=>{const q=qtyParts(r);return q?fmtInt(q.tot)+' '+q.unit:''};
 
 /* ================= UTIL ================= */
 const $=(s,r)=>(r||document).querySelector(s);
@@ -451,6 +445,7 @@ const ICON={
   alert:'<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
   edit:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   user:'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   mail:'<path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M22 6l-10 7L2 6"/>',
   shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'
 };
@@ -460,7 +455,7 @@ const chip=(c,t)=>'<span class="chip '+c+'"><i></i>'+esc(t)+'</span>';
 const dispChip=d=>{const x=DISP[d]||DISP.hold;return chip(x.c,x.t)};
 
 /* ================= STATE & STORAGE ================= */
-const S={mode:'init',sf:{q:'',st:'open'},dm:null,drafts:[],activeDraft:null,domDraft:null,confirmDraft:null,users:[],reports:[],memos:[],memoReads:[],memoId:null,tf:{q:'',proc:'all',st:'all',range:'30'},usersLoaded:false,meId:null,view:'dash',formProc:null,dispTouched:false,
+const S={mode:'init',sf:{q:'',st:'open'},ag:{q:'',st:'due',view:'jadwal'},agPick:[],agingSel:[],dm:null,drafts:[],activeDraft:null,domDraft:null,confirmDraft:null,users:[],reports:[],memos:[],memoReads:[],memoId:null,tf:{q:'',proc:'all',st:'all',range:'30'},usersLoaded:false,meId:null,view:'dash',formProc:null,dispTouched:false,
   detailId:null,confirmDel:null,confirmSdel:null,modal:null,userEdit:null,dbError:false,canDownload:false,
   filters:{q:'',proc:'all',disp:'all',range:'7'}};
 let dbh=null,dlh=null;
@@ -574,6 +569,7 @@ async function init(){
   S.meId=LS.get('lqc.me');
   loadDrafts();
   render();
+  setInterval(()=>{if(getMe())updateChrome()},60000);
 }
 function fail(){S.dbError=true;S.usersLoaded=true;render()}
 function getMe(){return S.users.find(u=>u.id===S.meId)||null}
@@ -598,13 +594,49 @@ const procsText=u=>u.role==='viewer'?'Semua proses, hanya melihat':u.role!=='ope
 const roleNote=r=>r==='admin'?'Koordinator / Admin: akses semua proses, tindakan tolakan, memorandum, dan kelola akun.':r==='viewer'?'Hanya Melihat: hanya bisa membuka menu Laporan In-Line untuk membaca laporan semua proses. Tidak bisa membuat, mengubah, atau memberi tindakan.':(ROLES[r]&&ROLES[r].r>=2?ROLES[r].t+': akses semua proses, memberi tindakan tolakan, dan membuat memorandum untuk operator. Hak akses sama untuk QC Ass SPV, QC SPV, QC AM, dan QC M.':'');
 function allowedProcs(){const m=getMe();if(!m)return[];return (rankOf(m)>=2||m.role==='viewer')?IDS.slice():(m.procs||[]).filter(p=>PROC[p])}
 /* tolakan = laporan dengan produk Not Pass / di luar spesifikasi */
-function isTolakan(r){const P=PROC[r.proc];if(!P)return false;if(P.kind==='log')return (r.qn>0)||r.kts==='ada';return r.auto==='ng'||r.disp!=='lulus'}
+function isTolakan(r){if(r.vid)return true;const P=PROC[r.proc];if(!P)return false;if(P.aging)return false;if(P.kind==='log')return (r.qn>0)||r.kts==='ada';return r.auto==='ng'||r.disp!=='lulus'}
 const ACT_GROUPS=['bag','slitting'];
-const canAct=r=>!!PROC[r.proc]&&ACT_GROUPS.includes(PROC[r.proc].group);
-const unitOf=r=>{const P=PROC[r&&r.proc];return (P&&P.unit)||'pcs'};
-const plabel=(r,P)=>(r&&r.sub)||((P||PROC[r&&r.proc]||{}).label)||(r&&r.proc)||'';
+const canAct=r=>!!r.vid||(!!PROC[r.proc]&&ACT_GROUPS.includes(PROC[r.proc].group));
+const unitOf=r=>{const P=PROC[r&&r.proc];return (r&&r.unit)||(P&&P.unit)||'pcs'};
+const plabel=(r,P)=>(r&&r.vid?'Dry Laminasi · Roll '+r.no:'')||(r&&r.sub)||((P||PROC[r&&r.proc]||{}).label)||(r&&r.proc)||'';
 function sumUnits(rs,fn){const m={};rs.forEach(r=>{const u=unitOf(r);m[u]=(m[u]||0)+(fn(r)||0)});const k=Object.keys(m).filter(u=>m[u]);return k.length?k.map(u=>fmtInt(m[u])+' '+u).join(' · '):'0'}
 const tolakanState=r=>!canAct(r)?'na':(r.tindakan||'wait');
+const AG_ST={pass:{t:'QC Passed',c:'ok'},biru:{t:'Label Biru',c:'info'},ng:{t:'QC Not Pass',c:'ng'}};
+const agS=v=>v==='ng'||v==='biru'?v:'pass';
+const rollNG=k=>k.s==='ng'||!!(k.check&&k.check.status==='ng');
+function rollCause(k){const a=[];if(k.s==='ng')a.push('QC Lami Not Pass');if(k.check&&k.check.status==='ng')a.push('QC Aging Not Pass'+(k.check.note?' ('+k.check.note+')':''));if(k.check&&k.check.kts==='ada')a.push('KTS aging: '+(k.check.ktsNote||'Ada'));return a.join('; ')}
+const ktsTxt=r=>r.kts==='ada'?'KTS: '+(r.defect||'Ada'):'';
+function rollItems(all){
+  const out=[];
+  (all?S.reports:visibleReports()).forEach(r=>{
+    if(!(PROC[r.proc]&&PROC[r.proc].aging))return;
+    (r.rolls||[]).forEach(k=>{if(!rollNG(k))return;
+      out.push({vid:true,id:r.id+'|'+k.id,rep:r,roll:k,proc:r.proc,wo:r.wo,product:r.product,customer:r.customer,shift:r.shift,createdAt:r.createdAt,operatorId:r.operatorId,operatorName:r.inspector||r.operatorName,no:k.no,qn:k.m,qp:0,unit:'m',defect:[rollCause(k),ktsTxt(r)].filter(Boolean).join('; '),tindakan:k.tindakan||'',tindakanNote:k.tindakanNote||'',tindakanBy:k.tindakanBy||null,sortir:k.sortir,sortirLog:k.sortirLog,disp:'reject'})});
+  });
+  return out;
+}
+const tolakanItems=()=>visibleReports().filter(r=>!(PROC[r.proc]&&PROC[r.proc].aging)).concat(rollItems());
+const findItem=id=>S.reports.find(x=>x.id===id)||(String(id).includes('|')?rollItems(true).find(x=>x.id===id):null);
+async function putItemDoc(doc){
+  if(!doc.vid)return safe(()=>put('reports',doc));
+  const rep=S.reports.find(x=>x.id===doc.rep.id);if(!rep)return false;
+  const F=['tindakan','tindakanNote','tindakanBy','sortir','sortirLog'];
+  const rolls=(rep.rolls||[]).map(k=>{if(k.id!==doc.roll.id)return k;const n=Object.assign({},k);F.forEach(x=>{if(doc[x]===undefined||doc[x]===null||doc[x]==='')delete n[x];else n[x]=doc[x]});return n});
+  return safe(()=>put('reports',Object.assign({},rep,{rolls})));
+}
+const planOut=r=>{const t=new Date(r.agingIn).getTime();return isNaN(t)?null:new Date(t+(r.agingDays||0)*86400000)};
+const fmtD=d=>d.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
+const fmtDT=d=>d?fmtD(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes()):'—';
+function agingItems(){
+  const out=[],now=Date.now();
+  visibleReports().forEach(r=>{
+    if(!(PROC[r.proc]&&PROC[r.proc].aging))return;
+    (r.rolls||[]).forEach(k=>{const po=planOut(r);out.push({key:r.id+'|'+k.id,r,k,po,st:k.check?'done':(po&&po.getTime()<=now?'due':'wait')})});
+  });
+  return out;
+}
+const showAging=()=>{const me=getMe();return !!me&&me.role!=='viewer'&&(isSpv()||allowedProcs().includes('lam_dry'))};
+const rollsText=r=>(r.rolls||[]).map(k=>k.no+' ('+fmtInt(k.m)+' m, '+(AG_ST[k.s]||AG_ST.pass).t+')').join('; ');
 const noteSeenId=(r,uid)=>'note_'+r.id+'_'+uid;
 function noteUnread(r,uid){
   const n=r.qcNote;if(!n||!n.text||r.operatorId!==uid)return false;
@@ -612,11 +644,11 @@ function noteUnread(r,uid){
   return !d||String(d.at)<String(n.at);
 }
 function unreadNotes(){const me=getMe();return me&&rankOf(me)===1?visibleReports().filter(r=>noteUnread(r,me.id)):[]}
-const sortirList=()=>visibleReports().filter(r=>canAct(r)&&isTolakan(r)&&r.tindakan==='sortir');
+const sortirList=()=>visibleReports().filter(r=>!r.vid&&canAct(r)&&isTolakan(r)&&r.tindakan==='sortir');
 const showSortir=()=>{const me=getMe();return !!me&&me.role!=='viewer'&&(isSpv()||allowedProcs().some(x=>PROC[x]&&ACT_GROUPS.includes(PROC[x].group)))};
-const canSortir=r=>{const me=getMe();return !!me&&me.role!=='viewer'&&canAct(r)&&allowedProcs().includes(r.proc)&&r.tindakan==='sortir'};
-const waitList=()=>visibleReports().filter(r=>isTolakan(r)&&canAct(r)&&!r.tindakan);
-function causeOf(r){const P=PROC[r.proc];if(!P)return '—';if(P.kind==='log')return r.defect||'—';return evalData(P,{vals:r.vals||{},targets:r.targets||{},checks:r.checks||{}}).bad.join(', ')||'—'}
+const canSortir=r=>{const me=getMe();if(!me||me.role==='viewer'||!isSortirT(r.tindakan))return false;return r.vid?false:(canAct(r)&&allowedProcs().includes(r.proc)&&r.tindakan==='sortir')};
+const waitList=()=>tolakanItems().filter(r=>isTolakan(r)&&canAct(r)&&!r.tindakan);
+function causeOf(r){if(r.vid)return r.defect||'—';const P=PROC[r.proc];if(!P)return '—';if(P.kind==='log')return r.defect||'—';return evalData(P,{vals:r.vals||{},targets:r.targets||{},checks:r.checks||{}}).bad.join(', ')||'—'}
 const PRIO={biasa:{t:'Biasa',c:'mute'},penting:{t:'Penting',c:'hold'}};
 const isRead=(m,uid)=>S.memoReads.some(x=>x.memoId===m.id&&x.userId===uid);
 const memoVisible=m=>{const me=getMe();return !!me&&(isSpv()||(m.toIds||[]).includes(me.id))};
@@ -631,6 +663,7 @@ function onData(){
   if(S.view==='form'||S.modal==='user'||S.modal==='memo'){updateChrome();return}
   const a=document.activeElement;
   if(S.view==='list'&&!S.detailId&&a&&a.id==='fq'){const rs=$('#results');if(rs)rs.innerHTML=resultsHTML();updateChrome();return}
+  if(S.view==='aging'&&!S.modal&&!S.detailId&&a&&a.id==='agq'){const rs=$('#agresults');if(rs)rs.innerHTML=agResultsHTML();updateChrome();return}
   if(S.view==='sortir'&&!S.detailId&&a&&a.id==='sq'){const rs=$('#sresults');if(rs)rs.innerHTML=sResultsHTML();updateChrome();return}
   if(S.view==='tolakan'&&!S.detailId&&a&&a.id==='tq'){const rs=$('#tresults');if(rs)rs.innerHTML=tResultsHTML();updateChrome();return}
   render();
@@ -734,10 +767,11 @@ async function doSetup(f){
 }
 
 /* ================= SHELL ================= */
-const SHORT={new:'Buat',list:'In-Line',memo:'Memo',sortir:'Sortir'};
+const SHORT={new:'Buat',list:'In-Line',memo:'Memo',sortir:'Sortir',aging:'Aging'};
 function badgeVal(k){
   if(k==='tolakan')return isSpv()?waitList().length:0;
   if(k==='list')return unreadNotes().length;
+  if(k==='aging')return showAging()?agingItems().filter(x=>x.st==='due').length:0;
   if(k==='sortir')return showSortir()?sortirList().filter(r=>sortSt(r)!=='selesai').length:0;
   if(k==='memo')return unreadCount();
   if(k==='new')return visibleDrafts().length;
@@ -747,13 +781,14 @@ function shellHTML(me){
   let nav=[['dash','Beranda','home']];
   if(canCreate())nav.push(['new','Buat laporan','plus']);
   nav.push(['list','Laporan In-Line','list']);
+  if(showAging())nav.push(['aging','Monitoring Aging','clock']);
   if(isSpv())nav.push(['tolakan','Tolakan','alert']);
   if(showSortir())nav.push(['sortir','Progress Sortir','check']);
   nav.push(['memo','Memorandum','mail']);
   if(me.role==='admin')nav.push(['users','Pengguna','users']);
   if(me.role==='viewer')nav=[['list','Laporan In-Line','list']];
   const cur=S.view==='form'?(canCreate()?'new':'list'):S.view;
-  const bd=k=>{if(k!=='tolakan'&&k!=='memo'&&k!=='new'&&k!=='sortir'&&k!=='list')return '';const b=badgeVal(k);return '<span class="badge" data-badge="'+k+'"'+(b?'':' hidden')+'>'+b+'</span>'};
+  const bd=k=>{if(k!=='tolakan'&&k!=='memo'&&k!=='new'&&k!=='sortir'&&k!=='list'&&k!=='aging')return '';const b=badgeVal(k);return '<span class="badge" data-badge="'+k+'"'+(b?'':' hidden')+'>'+b+'</span>'};
   const btn=(n,short)=>'<button data-act="nav" data-v="'+n[0]+'"'+(cur===n[0]?' aria-current="page"':'')+'>'+ic(n[2])+'<span>'+((short&&SHORT[n[0]])||n[1])+'</span>'+bd(n[0])+'</button>';
   const roleTxt=(ROLES[me.role]||ROLES.operator).t;
   return '<div class="shell'+(S.view==='form'?' is-form':'')+'">'+
@@ -775,6 +810,7 @@ function viewHTML(me){
     case 'form':{const d=curDraft();return d&&PROC[d.proc]?draftBarHTML()+editBannerHTML()+formHTML(d.proc,me):newHTML(me)}
     case 'list':return listHTML(me);
     case 'tolakan':return isSpv()?tolakanHTML(me):dashHTML(me);
+    case 'aging':return showAging()?agingHTML(me):dashHTML(me);
     case 'sortir':return showSortir()?sortirHTML(me):dashHTML(me);
     case 'memo':return memoHTML(me);
     case 'users':return me.role==='admin'?usersHTML(me):dashHTML(me);
@@ -805,7 +841,7 @@ function dashHTML(me){
     const allowed=allowedProcs();
     if(!allowed.length)return head+'<div class="panel empty"><b>Akun Anda belum punya akses proses</b><span>Minta admin QC menambahkan proses yang boleh Anda buka.</span></div>';
     const mine=vis.filter(r=>r.operatorId===me.id).slice(0,5);
-    return head+memoBanner()+notesBanner()+'<section class="grp"><h2>Mulai pengecekan</h2></section>'+groupsHTML(allowed)+
+    return head+memoBanner()+notesBanner()+agingBanner()+'<section class="grp"><h2>Mulai pengecekan</h2></section>'+groupsHTML(allowed)+
       '<section><div class="sechead"><h2>Laporan terakhir saya</h2><button class="btn sm ghost" data-act="nav" data-v="list">Lihat semua</button></div>'+
       (mine.length?'<div class="panel" style="padding:0 18px">'+mine.map(r=>'<button class="rowbtn" data-act="open" data-id="'+r.id+'">'+miniRow(r)+'</button>').join('')+'</div>':'<div class="panel empty">Belum ada laporan dari Anda. Pilih proses di atas untuk mulai.</div>')+'</section>';
   }
@@ -830,6 +866,11 @@ function dashHTML(me){
     '<section class="panel pad"><div class="sechead" style="flex-wrap:wrap;align-items:center"><h2>Hasil per proses</h2><div class="monnav"><button class="btn sm" data-act="dmon" data-d="-1" aria-label="Bulan sebelumnya">‹</button><b class="monlbl">'+esc(mlabel)+'</b><button class="btn sm" data-act="dmon" data-d="1" aria-label="Bulan berikutnya"'+(isCur?' disabled':'')+'>›</button></div></div><div style="margin-bottom:6px">'+legend+'</div>'+rows+'</section>'+
     tolakanSection()+
     '';
+}
+function agingBanner(){
+  if(!showAging())return '';
+  const n=agingItems().filter(x=>x.st==='due').length;if(!n)return '';
+  return '<div class="panel pad" style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><div><b>'+n+' roll siap dicek aging</b><div class="muted" style="font-size:14px">Durasi aging sudah selesai</div></div><button class="btn sm" data-act="nav" data-v="aging">Buka Monitoring Aging</button></div>';
 }
 function notesBanner(){
   const un=unreadNotes();if(!un.length)return '';
@@ -980,12 +1021,24 @@ function canEditReport(r){
 const editedChip=r=>(r.edits&&r.edits.length)?chip('mute','Diedit'):'';
 const sortSt=r=>(r.sortir&&r.sortir.status)||'belum';
 function statusChip(r){
-  const t=r.tindakan&&TINDAKAN[r.tindakan];
-  if(t){
-    if(r.tindakan==='sortir'){const x=sortSt(r);if(x==='selesai')return chip('ok','Sortir selesai');if(x==='proses')return chip('hold','Sortir berjalan')}
-    return chip(t.c,t.t);
+  const P0=PROC[r.proc];
+  if(P0&&P0.aging&&!r.vid&&(r.rolls||[]).length){
+    const ngs=r.rolls.filter(rollNG),bl=r.rolls.filter(k=>!rollNG(k)&&((k.check?k.check.status:k.s)==='biru')).length,g={};
+    ngs.forEach(k=>{const key=(k.tindakan&&TINDAKAN[k.tindakan])?k.tindakan:'_';g[key]=(g[key]||0)+1});
+    const acc=ngs.filter(k=>k.tindakan==='diterima').length;
+    delete g.diterima;
+    const ch=Object.keys(g).map(key=>key==='_'?chip('ng',g[key]+' roll Not Pass'):chip(TINDAKAN[key].c,g[key]+' roll '+TINDAKAN[key].t)).join('');
+    return ch+(bl?chip('info',bl+' Label Biru'):'')||chip('ok','QC Passed');
   }
-  return dispChip(r.disp);
+  if(r.vid&&!r.tindakan)return chip('ng','Not Pass');
+  const t=r.tindakan&&TINDAKAN[r.tindakan];
+  const ngc=(P0&&P0.kind==='log'&&r.qn>0&&!r.vid)?chip('ng',fmtInt(r.qn)+' '+unitOf(r)+' NG'):'';
+  if(r.tindakan==='diterima'&&!r.vid)return chip('ok','QC Passed');
+  if(t){
+    if(isSortirT(r.tindakan)&&!r.vid){const x=sortSt(r);if(x==='selesai')return ngc+chip('ok','Sortir selesai');if(x==='proses')return ngc+chip('hold','Sortir berjalan')}
+    return ngc+chip(t.c,t.t);
+  }
+  return ngc||(r.disp==='lulus'?chip('ok','QC Passed'):dispChip(r.disp));
 }
 const isEditDraft=()=>{const d=curDraft();return !!(d&&d.editId)};
 function editBannerHTML(){
@@ -1004,7 +1057,12 @@ function reportToFormData(r){
     Object.assign(d,{date:ymd(new Date(r.createdAt)),shift:r.shift||'1',wo:r.wo||'',product:r.product||'',customer:r.customer||'',size:r.size||'',sub:r.sub||'',machine:r.machine||'',op:r.op||'',dusOk:r.dusOk||'',dusNg:r.dusNg||'',qp:r.qp==null?'':String(r.qp),qn:r.qn==null?'':String(r.qn),kts:r.kts||'tidak',defect:r.defect||''});
     if(r.cond)d.cond=r.cond;
   }else{
-    Object.assign(d,{shift:r.shift||'1',wo:r.wo||'',product:r.product||'',customer:r.customer||'',machine:r.machine||'',batch:r.batch||'',disp:r.disp||'lulus',note:r.note||''});
+    Object.assign(d,{shift:r.shift||'1',wo:r.wo||'',product:r.product||'',customer:r.customer||'',machine:r.machine||'',batch:r.batch||'',disp:r.disp||'lulus',note:r.note||'',insp:r.inspector||r.operatorName||'',kts:r.kts||'tidak',defect:r.defect||''});
+    if(P.aging){
+      const ai=new Date(r.agingIn);
+      Object.assign(d,{komposisi:r.komposisi||'',agingDays:String(r.agingDays||''),agingDate:isNaN(ai)?'':ymd(ai),agingTime:isNaN(ai)?'':pad(ai.getHours())+':'+pad(ai.getMinutes())});
+      (r.rolls||[]).forEach((k,i)=>{d['ri_'+i]=k.id;d['rn_'+i]=k.no;d['rm_'+i]=String(k.m);d['rs_'+i]=agS(k.s)});
+    }
     P.measures.forEach(m=>{
       if(r.vals&&r.vals[m.k]!=null)d['m_'+m.k]=ns(r.vals[m.k]);
       if(m.target&&r.targets&&r.targets[m.k]!=null)d['t_'+m.k]=ns(r.targets[m.k]);
@@ -1027,7 +1085,9 @@ function diffReport(P,a,b){
     add('KTS',a.kts==='ada'?'Ada':'Tidak ada',b.kts==='ada'?'Ada':'Tidak ada');
     add('Keterangan defect',a.defect,b.defect);
   }else{
-    [['shift','Shift'],['wo','No. PR'],['product','Produk'],['customer','Customer'],['machine','Mesin'],['batch','No. batch / roll']].forEach(x=>add(x[1],a[x[0]],b[x[0]]));
+    [['shift','Shift'],['wo','No. PR'],['product','Produk'],['customer','Customer'],['machine','Mesin'],['batch','No. batch / roll']].filter(x=>!P.dry||!/machine|batch/.test(x[0])).forEach(x=>add(x[1],a[x[0]],b[x[0]]));
+    if(P.dry){add('QC Lami Inspector',a.inspector,b.inspector);add('KTS',a.kts==='ada'?'Ada':'Tidak ada',b.kts==='ada'?'Ada':'Tidak ada');add('Keterangan KTS',a.defect,b.defect)}
+    if(P.aging){add('Komposisi',a.komposisi,b.komposisi);add('Durasi aging (hari)',a.agingDays,b.agingDays);add('Masuk aging',a.agingIn?fmtDT(new Date(a.agingIn)):'',b.agingIn?fmtDT(new Date(b.agingIn)):'');add('Roll',rollsText(a),rollsText(b))}
     P.measures.forEach(m=>{
       add(m.label+(m.unit?' ('+m.unit+')':''),(a.vals||{})[m.k],(b.vals||{})[m.k]);
       if(m.target)add('Target '+m.label,(a.targets||{})[m.k],(b.targets||{})[m.k]);
@@ -1048,8 +1108,9 @@ async function commitEdit(dr,doc,f,did){
   const reason=f.elements['reason']?f.elements['reason'].value.trim():'';
   if(!reason)return fail('Isi alasan perubahan.');
   const P=PROC[latest.proc],log=P.kind==='log',next=Object.assign({},latest);
-  const keys=log?['shift','wo','product','customer','machine','size','sub','op','cond','dusOk','dusNg','qp','qn','kts','defect']:['shift','wo','product','customer','machine','batch','vals','targets','checks','note'];
+  const keys=log?['shift','wo','product','customer','machine','size','sub','op','cond','dusOk','dusNg','qp','qn','kts','defect']:(P.dry?['shift','wo','product','customer','note','inspector','kts','defect']:['shift','wo','product','customer','machine','batch','vals','targets','checks','note']);
   keys.forEach(k=>{next[k]=doc[k]});
+  if(P.aging){['komposisi','agingDays','agingIn'].forEach(k=>{next[k]=doc[k]});next.rolls=(doc.rolls||[]).map(rr=>{const o=(latest.rolls||[]).find(x=>x.id===rr.id);if(!o)return rr;const kp={};['check','tindakan','tindakanNote','tindakanBy','sortir','sortirLog'].forEach(x=>{if(o[x]!==undefined)kp[x]=o[x]});return Object.assign({},rr,kp)})}
   next.auto=doc.auto;
   if(log){
     const orig=new Date(latest.createdAt),dvv=f.elements['date']?f.elements['date'].value:'';
@@ -1108,20 +1169,74 @@ function formHTML(pid,me){
       '<div class="fld"><label for="f_wo">No. PR <span class="req">*</span></label><input class="in mono" id="f_wo" name="wo" autocomplete="off"></div>'+
       '<div class="fld"><label for="f_product">Produk <span class="req">*</span></label><input class="in" id="f_product" name="product" autocomplete="off"></div>'+
       '<div class="fld"><label for="f_customer">Customer</label><input class="in" id="f_customer" name="customer" autocomplete="off"></div>'+
-      '<div class="fld"><label for="f_machine">Mesin</label><input class="in" id="f_machine" name="machine" autocomplete="off"></div>'+
-      '<div class="fld"><label for="f_batch">No. batch / roll</label><input class="in mono" id="f_batch" name="batch" autocomplete="off"></div>'+
+      (P.dry?'<div class="fld"><label for="f_insp">QC Lami Inspector <span class="req">*</span></label><input class="in" id="f_insp" name="insp" autocomplete="off" value="'+esc(me.name)+'" placeholder="Nama, pisahkan dengan /"></div>':'<div class="fld"><label for="f_machine">Mesin</label><input class="in" id="f_machine" name="machine" autocomplete="off"></div>'+
+      '<div class="fld"><label for="f_batch">No. batch / roll</label><input class="in mono" id="f_batch" name="batch" autocomplete="off"></div>')+
       '<div class="fld"><label for="f_shift">Shift</label><select class="in" id="f_shift" name="shift">'+['1','2','3'].map(s=>'<option value="'+s+'"'+(s===shiftOf(now)?' selected':'')+'>Shift '+s+'</option>').join('')+'</select></div>'+
      '</div></section>'+
-    '<section><div class="sechead"><h2>Pengukuran</h2><span class="muted" style="font-size:13px">Boleh pakai koma atau titik desimal</span></div><div class="meas-grid">'+meas+'</div></section>'+
-    '<section class="panel pad"><div class="sechead"><h2>Pengecekan visual</h2><span class="muted" style="font-size:13px">OK, NG, atau N/A</span></div>'+checks+'</section>'+
-    '<section class="panel pad"><div class="sechead"><h2>Hasil</h2></div>'+
+    (P.dry?'':'<section><div class="sechead"><h2>Pengukuran</h2><span class="muted" style="font-size:13px">Boleh pakai koma atau titik desimal</span></div><div class="meas-grid">'+meas+'</div></section>'+
+    '<section class="panel pad"><div class="sechead"><h2>Pengecekan visual</h2><span class="muted" style="font-size:13px">OK, NG, atau N/A</span></div>'+checks+'</section>')+
+    (P.aging?agingFormHTML():'')+
+    (P.dry?'<section class="panel pad"><div class="sechead"><h2>Ketidaksesuaian (KTS)</h2></div><div class="fgrid"><div class="fld"><span class="lbl" id="lbl_kts">KTS</span>'+segTwo('kts',[['tidak','Tidak ada','ok',true],['ada','Ada','ng']])+'</div></div><div class="fld" style="margin-top:14px"><label for="f_defect">Keterangan KTS <span class="faint" id="defectReq" style="font-weight:400"></span></label><textarea class="in" id="f_defect" name="defect" placeholder="Jelaskan ketidaksesuaian yang ditemukan"></textarea></div></section><section class="panel pad"><div class="sechead"><h2>Catatan</h2></div><div class="fld"><label for="f_note">Catatan (opsional)</label><textarea class="in" id="f_note" name="note" placeholder="Keterangan tambahan"></textarea></div></section>':'<section class="panel pad"><div class="sechead"><h2>Hasil</h2></div>'+
      '<div class="fgrid"><div class="fld"><label for="f_disp">Disposisi</label><select class="in" id="f_disp" name="disp"><option value="lulus">Lulus</option><option value="hold">Hold</option><option value="reject">Reject</option></select></div></div>'+
      '<div class="fld" style="margin-top:14px"><label for="f_note">Catatan <span class="faint" id="noteReq" style="font-weight:400"></span></label><textarea class="in" id="f_note" name="note" placeholder="Temuan, tindakan perbaikan, atau keterangan lain"></textarea></div>'+
-    '</section>'+
+    '</section>')+
     editReasonHTML()+'<div id="formErr" class="err" role="alert" hidden></div>'+
     '<div class="formbar"><div class="autores" aria-live="polite"><b id="autoRes">Belum lengkap</b><span class="faint" id="prog" style="font-size:13px"></span></div>'+
      '<div class="actions"><button type="button" class="btn" data-act="cancelform">Batal</button><button type="submit" class="btn pri">'+ic('check')+(isEditDraft()?'Simpan perubahan':'Simpan laporan')+'</button></div></div>'+
    '</form>';
+}
+function updatePlan(f){
+  const E=n=>f.elements[n],days=toInt(E('agingDays').value),dt=E('agingDate').value,tm=E('agingTime').value;
+  const o=$('#planOutTxt'),ok=!isNaN(days)&&dt&&tm;
+  if(o)o.textContent=ok?fmtDT(new Date(new Date(dt+'T'+tm+':00').getTime()+days*86400000)):'—';
+  let n=0,ng=0,bl=0,i=0;while(E('rn_'+i)){if(E('rn_'+i).value.trim()){n++;const v=E('rs_'+i).value;if(v==='ng')ng++;if(v==='biru')bl++}i++}
+  const ck=f.querySelector('input[name="kts"]:checked'),dr=$('#defectReq');if(dr)dr.textContent=ck&&ck.value==='ada'?'(wajib diisi)':'';
+  const a=$('#autoRes');if(a){a.style.color=ng?'var(--ng)':'';a.textContent=n+' roll'+(ng?' · '+ng+' Not Pass':'')+(bl?' · '+bl+' Label Biru':'')}
+  const pg=$('#prog');if(pg)pg.textContent=ok&&o?'Keluar aging '+o.textContent:'';
+}
+function rollCount(d){let n=1;Object.keys((d&&d.data)||{}).forEach(k=>{const m=/^r[nmsi]_(\d+)$/.exec(k);if(m)n=Math.max(n,+m[1]+1)});return Math.max(n,(d&&d.rollN)||1)}
+function agingFormHTML(){
+  const d=curDraft(),n=rollCount(d),now=new Date();
+  const past=S.reports.filter(r=>r.komposisi).map(r=>r.komposisi);
+  let rows='';
+  for(let i=0;i<n;i++){
+    rows+='<div class="rollrow"><input type="hidden" name="ri_'+i+'">'+
+      '<div class="fld"><label for="f_rn_'+i+'">No. Roll</label><input class="in mono" id="f_rn_'+i+'" name="rn_'+i+'" autocomplete="off" placeholder="01.01"></div>'+
+      '<div class="fld"><label for="f_rm_'+i+'">Kuantiti (m)</label><input class="in mono" id="f_rm_'+i+'" name="rm_'+i+'" inputmode="numeric" autocomplete="off" placeholder="0"></div>'+
+      '<div class="fld"><label for="f_rs_'+i+'">Status QC Lami</label><select class="in" id="f_rs_'+i+'" name="rs_'+i+'"><option value="pass">QC Passed</option><option value="biru">Label Biru</option><option value="ng">QC Not Pass</option></select></div>'+
+      '<button type="button" class="btn sm ghost" data-act="delroll" data-i="'+i+'" aria-label="Hapus roll '+(i+1)+'">'+ic('x')+'</button></div>';
+  }
+  return '<section class="panel pad"><div class="sechead"><h2>Aging dan roll</h2><span class="muted" style="font-size:13px">Roll akan muncul di Monitoring Aging setelah durasi selesai</span></div>'+
+    '<div class="fgrid">'+
+     '<div class="fld"><label for="f_komposisi">Komposisi</label><input class="in" id="f_komposisi" name="komposisi" autocomplete="off" list="dl_komposisi" placeholder="NYLON+AL+LLDPE"></div>'+
+     '<div class="fld"><label for="f_agingDays">Durasi aging (hari) <span class="req">*</span></label><input class="in mono" id="f_agingDays" name="agingDays" inputmode="numeric" autocomplete="off" value="3"></div>'+
+     '<div class="fld"><label for="f_agingDate">Actual in aging: tanggal <span class="req">*</span></label><input class="in" type="date" id="f_agingDate" name="agingDate" value="'+ymd(now)+'"></div>'+
+     '<div class="fld"><label for="f_agingTime">Actual in aging: pukul <span class="req">*</span></label><input class="in" type="time" id="f_agingTime" name="agingTime" value="'+pad(now.getHours())+':'+pad(now.getMinutes())+'"></div>'+
+     '<div class="fld"><span class="lbl">Plan out aging (otomatis)</span><div class="in mono" id="planOutTxt" style="display:flex;align-items:center;border-style:dashed;background:transparent" aria-live="polite">—</div></div>'+
+    '</div>'+dlist('dl_komposisi',past)+
+    '<h3 style="margin:18px 0 4px">Daftar roll</h3><p class="muted" style="font-size:13px;margin-bottom:6px">Satu laporan boleh berisi banyak roll. Pengecekan aging nanti dilakukan per roll.</p>'+
+    rows+'<div style="margin-top:12px"><button type="button" class="btn" data-act="addroll">'+ic('plus')+'Tambah roll</button></div></section>';
+}
+function readAging(f){
+  const errs=[],E=n=>f.elements[n];
+  const days=toInt(E('agingDays').value),dt=E('agingDate').value,tm=E('agingTime').value;
+  if(isNaN(days)||days<=0)errs.push('Isi durasi aging (hari).');
+  if(!dt||!tm)errs.push('Isi tanggal dan pukul masuk aging.');
+  const rolls=[],seen={};let i=0;
+  while(E('rn_'+i)){
+    const no=E('rn_'+i).value.trim(),mraw=E('rm_'+i).value,m=toInt(mraw);
+    if(no||String(mraw).trim()){
+      if(!no)errs.push('Roll baris '+(i+1)+': isi No. Roll.');
+      else if(seen[no.toLowerCase()])errs.push('No. Roll '+no+' dobel.');
+      if(isNaN(m))errs.push('Roll '+(no||('baris '+(i+1)))+': isi kuantitas (m).');
+      seen[no.toLowerCase()]=1;
+      rolls.push({id:E('ri_'+i).value||('k'+Date.now().toString(36)+i),no,m:isNaN(m)?0:m,s:agS(E('rs_'+i).value)});
+    }
+    i++;
+  }
+  if(!rolls.length)errs.push('Isi minimal satu roll.');
+  const agingIn=dt&&tm?new Date(dt+'T'+tm+':00').toISOString():'';
+  return {errs,komposisi:E('komposisi').value.trim(),agingDays:isNaN(days)?0:days,agingIn,rolls};
 }
 function readForm(f,P){
   const vals={},targets={},checks={};
@@ -1137,6 +1252,7 @@ function updateForm(){
   refreshTab(f);
   const P=PROC[f.dataset.p];
   if(P.kind==='log'){updateLog(f,P);return}
+  if(P.dry){updatePlan(f);return}
   const d=readForm(f,P),r=evalData(P,d);
   P.measures.forEach(m=>{
     const s=mStatus(m,d.vals[m.k],d.targets[m.k]),box=f.querySelector('.meas[data-k="'+m.k+'"]'),st=box.querySelector('.st');
@@ -1162,6 +1278,12 @@ async function submitReport(f){
   const errs=[];
   if(!wo)errs.push('Isi No. PR.');
   if(!product)errs.push('Isi nama produk.');
+  const ag=P.aging?readAging(f):null;
+  if(ag)ag.errs.forEach(e=>errs.push(e));
+  const insp=P.dry?f.elements['insp'].value.trim():'';
+  if(P.dry&&!insp)errs.push('Isi nama QC Lami Inspector.');
+  const kts=P.dry?((f.querySelector('input[name="kts"]:checked')||{}).value||'tidak'):'',defect=P.dry?f.elements['defect'].value.trim():'';
+  if(P.dry&&kts==='ada'&&!defect)errs.push('Isi keterangan KTS.');
   if(r.missing){
     errs.push('Masih ada '+r.missing+' item pengukuran atau pengecekan yang kosong.');
     P.checks.forEach(c=>{if(!d.checks[c.k])f.querySelector('.chk[data-k="'+c.k+'"]').classList.add('miss')});
@@ -1173,9 +1295,11 @@ async function submitReport(f){
   const now=new Date(),id=uid('r');
   const yy=String(now.getFullYear()).slice(2)+pad(now.getMonth()+1)+pad(now.getDate());
   const doc={id,no:P.code+'-'+yy+'-'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds()),proc:pid,createdAt:now.toISOString(),
-    shift:f.shift.value,wo,product,customer:f.customer.value.trim(),machine:f.machine.value.trim(),batch:f.batch.value.trim(),
+    shift:f.shift.value,wo,product,customer:f.customer.value.trim(),machine:f.machine?f.machine.value.trim():'',batch:f.batch?f.batch.value.trim():'',
     operatorId:me.id,operatorName:me.name,vals:d.vals,targets:d.targets,checks:d.checks,note,
-    auto:r.bad.length?'ng':'ok',disp:f.disp.value,verified:null};
+    auto:r.bad.length?'ng':'ok',disp:f.disp?f.disp.value:'lulus',verified:null};
+  if(P.dry){const anyNg=ag.rolls.some(k=>k.s==='ng');doc.inspector=insp;doc.kts=kts;doc.defect=defect;doc.auto=anyNg?'ng':'ok';doc.disp=anyNg?'hold':'lulus'}
+  if(ag)Object.assign(doc,{komposisi:ag.komposisi,agingDays:ag.agingDays,agingIn:ag.agingIn,rolls:ag.rolls});
   const dr0=S.drafts.find(x=>x.id===did);
   if(dr0&&dr0.editId)return commitEdit(dr0,doc,f,did);
   const btn=f.querySelector('button[type=submit]');btn.disabled=true;
@@ -1288,7 +1412,7 @@ function detailLogHTML(r){
   const tn=r.tindakan?TINDAKAN[r.tindakan]:null;
   const tview=tn?chip(tn.c,tn.t)+(r.tindakanNote?'<p style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.tindakanNote)+'</p>':'')+(r.tindakanBy?'<div class="faint" style="font-size:13px;margin-top:6px">'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</div>':''):'<span class="faint">Belum ditentukan</span>';
   const tform=isSpv()?'<form data-form="tindakan" data-id="'+r.id+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px" novalidate>'+
-    '<div class="fld"><label for="t_sel">Tindakan</label><select class="in" id="t_sel" name="tindakan"><option value="">Belum ditentukan</option>'+Object.keys(TINDAKAN).map(k=>'<option value="'+k+'"'+(r.tindakan===k?' selected':'')+'>'+TINDAKAN[k].t+'</option>').join('')+'</select></div>'+
+    '<div class="fld"><label for="t_sel">Tindakan</label><select class="in" id="t_sel" name="tindakan"><option value="">Belum ditentukan</option>'+tOpts(r).map(k=>'<option value="'+k+'"'+(r.tindakan===k?' selected':'')+'>'+TINDAKAN[k].t+'</option>').join('')+'</select></div>'+
     '<div class="fld"><label for="t_note">Keterangan</label><textarea class="in" id="t_note" name="tnote">'+esc(r.tindakanNote||'')+'</textarea></div>'+
     '<div><button class="btn" type="submit">Simpan tindakan</button></div></form>':'';
   const tsec=(r.qn>0||r.kts==='ada'||r.tindakan)?'<section class="panel pad"><h3 style="margin-bottom:2px">Tindakan produk label biru / merah</h3><p class="muted" style="font-size:13px;margin-bottom:10px">Diisi oleh QC Ass SPV ke atas</p>'+tview+tform+'</section>':'';
@@ -1308,11 +1432,11 @@ function detailLogHTML(r){
    tsec+sortirSection(r)+qcNoteSection(r)+editsHTML(r)+ver+'<div class="actions">'+acts.join('')+'</div>';
 }
 async function submitTindakan(f){
-  const r=S.reports.find(x=>x.id===f.dataset.id),me=getMe();if(!r||!isSpv())return;
+  const r=findItem(f.dataset.id),me=getMe();if(!r||!isSpv())return;
   const t=f.elements['tindakan'].value,note=f.elements['tnote'].value.trim();
   const doc=Object.assign({},r,{tindakan:t,tindakanNote:note,tindakanBy:t||note?{by:me.id,name:me.name,at:new Date().toISOString()}:null});
   if(t&&TINDAKAN[t])doc.disp=TINDAKAN[t].d;
-  const ok=await safe(()=>put('reports',doc));
+  const ok=await putItemDoc(doc);
   if(ok){toast('Tindakan disimpan');document.activeElement&&document.activeElement.blur&&document.activeElement.blur();renderModal()}
 }
 function summaryLog(r){
@@ -1381,7 +1505,7 @@ function resultsHTML(){
   const cards=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
     return '<button class="card g-'+P.group+'" data-act="open" data-id="'+r.id+'"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+'</span><span style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+statusChip(r)+editedChip(r)+'</span></div>'+
     '<div class="r2"><span class="pdot"></span>'+esc(plabel(r,P))+'</div>'+
-    '<div class="r3"><span>Shift '+esc(r.shift||'—')+'</span><span>'+esc(r.product)+'</span>'+(r.customer?'<span>'+esc(r.customer)+'</span>':'')+'<span>'+esc(r.operatorName)+'</span>'+(r.qp!=null?'<span class="mono">'+qtyCell(r)+' '+unitOf(r)+'</span>':'')+'<span>'+fmtT(r.createdAt)+'</span>'+'</div>'+(r.qcNote&&r.qcNote.text?'<div class="ncard">'+(me0n(r)?chip('info','Baru')+' ':'')+'<b>Catatan QC:</b> '+esc(r.qcNote.text)+'</div>':'')+'</button>'}).join('');
+    '<div class="r3"><span>Shift '+esc(r.shift||'—')+'</span><span>'+esc(r.product)+'</span>'+(r.customer?'<span>'+esc(r.customer)+'</span>':'')+'<span>'+esc(r.operatorName)+'</span>'+(qtyParts(r)?'<span class="mono">'+esc(qtyText(r))+'</span>':'')+'<span>'+fmtT(r.createdAt)+'</span>'+'</div>'+(r.qcNote&&r.qcNote.text?'<div class="ncard">'+(me0n(r)?chip('info','Baru')+' ':'')+'<b>Catatan QC:</b> '+esc(r.qcNote.text)+'</div>':'')+'</button>'}).join('');
   return '<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Operator / QC</th><th>Qty</th><th>Hasil</th><th>Catatan QC</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
 }
 function csvEscape(v){v=String(v==null?'':v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
@@ -1402,6 +1526,7 @@ async function exportCsv(){
 
 /* ================= DETAIL LAPORAN ================= */
 function detailHTML(r){
+  if(r.vid)return detailRollHTML(r);
   if(PROC[r.proc]&&PROC[r.proc].kind==='log')return detailLogHTML(r);
   const me=getMe(),P=PROC[r.proc]||{label:r.proc,group:'printing',measures:[],checks:[]};
   const meas=P.measures.filter(m=>r.vals&&r.vals[m.k]!=null).map(m=>{
@@ -1420,11 +1545,33 @@ function detailHTML(r){
   return '<div class="shead g-'+P.group+'"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+(r.shift?' · Shift '+esc(r.shift):'')+'</div><h2 class="mono" style="font-family:var(--f-mono);font-size:19px;margin-top:4px">'+esc(r.wo)+'</h2><div style="margin-top:4px;font-size:15px;font-weight:500">'+esc(r.product)+'</div>'+(r.customer?'<div class="muted" style="font-size:14px">'+esc(r.customer)+'</div>':'')+'</div>'+
      '<div style="display:flex;gap:10px;align-items:center">'+statusChip(r)+'<button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div></div>'+
    '<dl class="meta">'+
-    [['Waktu',fmtFull(r.createdAt)],['Shift',r.shift],['Operator',r.operatorName],['No. PR',r.wo],['Produk',r.product],['Customer',r.customer||'—'],['Mesin',r.machine||'—'],['No. batch / roll',r.batch||'—']].map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd></div>').join('')+'</dl>'+
+    (P.dry?[['Waktu',fmtFull(r.createdAt)],['Shift',r.shift],['QC Lami Inspector',r.inspector||r.operatorName],['Dibuat oleh',r.operatorName],['No. PR',r.wo],['Produk',r.product],['Customer',r.customer||'—'],['Komposisi',r.komposisi||'—']]:[['Waktu',fmtFull(r.createdAt)],['Shift',r.shift],['Operator',r.operatorName],['No. PR',r.wo],['Produk',r.product],['Customer',r.customer||'—'],['Mesin',r.machine||'—'],['No. batch / roll',r.batch||'—']]).map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd></div>').join('')+'</dl>'+
    (meas?'<section><h3 style="margin-bottom:4px">Pengukuran</h3><div class="dl">'+meas+'</div></section>':'')+
-   '<section><h3 style="margin-bottom:4px">Pengecekan visual</h3><div class="dl">'+checks+'</div></section>'+
+   (P.dry?'<section><h3 style="margin-bottom:6px">Ketidaksesuaian (KTS)</h3><div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">'+(r.kts==='ada'?chip('ng','Ada'):chip('ok','Tidak ada'))+(r.defect?'<p style="white-space:pre-wrap;overflow-wrap:anywhere;flex:1 1 220px">'+esc(r.defect)+'</p>':'')+'</div></section>':'')+
+   (P.checks.length?'<section><h3 style="margin-bottom:4px">Pengecekan visual</h3><div class="dl">'+checks+'</div></section>':'')+
    (r.note?'<section><h3 style="margin-bottom:6px">Catatan</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.note)+'</p></section>':'')+
-   qcNoteSection(r)+editsHTML(r)+ver+'<div class="actions">'+acts.join('')+'</div>';
+   agingSection(r)+qcNoteSection(r)+editsHTML(r)+ver+'<div class="actions">'+acts.join('')+'</div>';
+}
+function tindakanBlock(r){
+  const tn=r.tindakan?TINDAKAN[r.tindakan]:null;
+  const tview=tn?chip(tn.c,tn.t)+(r.tindakanNote?'<p style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.tindakanNote)+'</p>':'')+(r.tindakanBy?'<div class="faint" style="font-size:13px;margin-top:6px">'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</div>':''):'<span class="faint">Belum ditentukan</span>';
+  const tform=isSpv()?'<form data-form="tindakan" data-id="'+esc(r.id)+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px" novalidate>'+
+    '<div class="fld"><label for="t_sel">Tindakan</label><select class="in" id="t_sel" name="tindakan"><option value="">Belum ditentukan</option>'+tOpts(r).map(k=>'<option value="'+k+'"'+(r.tindakan===k?' selected':'')+'>'+TINDAKAN[k].t+'</option>').join('')+'</select></div>'+
+    '<div class="fld"><label for="t_note">Keterangan</label><textarea class="in" id="t_note" name="tnote">'+esc(r.tindakanNote||'')+'</textarea></div>'+
+    '<div><button class="btn" type="submit">Simpan tindakan</button></div></form>':'';
+  return '<section class="panel pad"><h3 style="margin-bottom:2px">Tindakan produk QC Not Pass</h3><p class="muted" style="font-size:13px;margin-bottom:10px">Diisi oleh QC Ass SPV ke atas</p>'+tview+tform+'</section>';
+}
+function detailRollHTML(v){
+  const r=v.rep,k=v.roll,po=planOut(r),P=PROC[r.proc];
+  const meta=[['Tanggal',fmtFull(r.createdAt)],['Shift',r.shift],['QC Lami Inspector',r.inspector||r.operatorName],['No. PR',r.wo],['Nama produk',r.product],['Customer',r.customer||'—'],['No. roll',k.no],['Kuantiti',fmtInt(k.m)+' m'],['Komposisi',r.komposisi||'—'],['Masuk aging',fmtDT(new Date(r.agingIn))],['Plan keluar aging',fmtDT(po)]];
+  const st=(AG_ST[k.s]||AG_ST.pass),c=k.check,cs=c?(AG_ST[c.status]||AG_ST.pass):null;
+  const rows='<div class="dl"><div class="row"><div>QC Lami</div><div>'+chip(st.c,st.t)+'</div></div>'+(cs?'<div class="row"><div><div>QC Aging Check</div><div class="sp">'+esc(c.inspector||'')+' · '+esc(c.date||'')+' · Shift '+esc(c.shift||'—')+'</div></div><div>'+chip(cs.c,cs.t)+'</div></div>'+(c.kts==='ada'?'<div class="row"><div>KTS aging</div><div style="text-align:right;overflow-wrap:anywhere">'+esc(c.ktsNote||'Ada')+'</div></div>':''):'<div class="row"><div>QC Aging Check</div><div class="faint">Belum dicek</div></div>')+'</div>';
+  return '<div class="shead g-'+P.group+'"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(v,P))+(r.shift?' · Shift '+esc(r.shift):'')+'</div><h2 class="mono" style="font-family:var(--f-mono);font-size:19px;margin-top:4px">'+esc(r.wo)+'</h2><div style="margin-top:4px;font-size:15px;font-weight:500">'+esc(r.product)+'</div>'+(r.customer?'<div class="muted" style="font-size:14px">'+esc(r.customer)+'</div>':'')+'</div>'+
+    '<div style="display:flex;gap:10px;align-items:center">'+statusChip(v)+'<button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div></div>'+
+    '<dl class="meta">'+meta.map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd></div>').join('')+'</dl>'+
+    '<section><h3 style="margin-bottom:6px">Penyebab Not Pass</h3><p style="overflow-wrap:anywhere">'+esc(v.defect||'—')+'</p>'+rows+'</section>'+
+    tindakanBlock(v)+sortirSection(v)+
+    '<div class="actions"><button class="btn" data-act="open" data-id="'+esc(r.id)+'">Buka laporan Dry Laminasi</button></div>';
 }
 function renderModal(){
   const root=$('#modalRoot');
@@ -1433,16 +1580,20 @@ function renderModal(){
   let inner='',kind='';
   if(S.modal==='user'&&me.role==='admin'){inner=userFormHTML();kind='user'}
   else if(S.modal==='memo'&&isSpv()){inner=memoFormHTML();kind='memo'}
+  else if(S.modal==='aging'&&showAging()){inner=agingModalHTML();kind='aging'}
   else if(S.memoId){const m=S.memos.find(x=>x.id===S.memoId);if(m&&memoVisible(m)){inner=memoDetailHTML(m);kind='memodetail'}else{S.memoId=null}}
   else if(S.detailId){
-    const r=S.reports.find(x=>x.id===S.detailId);
-    if(r&&allowedProcs().includes(r.proc)){inner=detailHTML(r);kind='detail'}
+    const r=findItem(S.detailId);
+    if(r&&(r.vid||allowedProcs().includes(r.proc))){inner=detailHTML(r);kind='detail'}
     else{S.detailId=null}
   }
   if(!inner){root.innerHTML='';document.body.style.overflow='';return}
   const old=root.querySelector('.sheet'),top=old?old.scrollTop:0;
-  root.innerHTML='<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="'+({user:'Akun pengguna',memo:'Memorandum baru',memodetail:'Memorandum'}[kind]||'Detail laporan')+'" tabindex="-1">'+inner+'</div></div>';
+  const keep={};
+  if(old&&kind==='aging'){old.querySelectorAll('form[data-form=aging] [name]').forEach(e=>{if(e.type==='radio'){if(e.checked)keep[e.name]=e.value}else keep[e.name]=e.value})}
+  root.innerHTML='<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="'+({user:'Akun pengguna',memo:'Memorandum baru',memodetail:'Memorandum',aging:'Periksa aging'}[kind]||'Detail laporan')+'" tabindex="-1">'+inner+'</div></div>';
   document.body.style.overflow='hidden';
+  Object.keys(keep).forEach(n=>{root.querySelectorAll('form[data-form=aging] [name="'+n+'"]').forEach(e=>{if(e.type==='radio')e.checked=e.value===keep[n];else e.value=keep[n]})});
   const sh=root.querySelector('.sheet');
   if(old){sh.scrollTop=top}else{sh.focus()}
 }
@@ -1454,6 +1605,8 @@ function summaryText(r){
   P.measures.forEach(m=>{if(r.vals&&r.vals[m.k]!=null)L.push('- '+m.label+': '+fmtNum(r.vals[m.k])+' '+m.unit+' ('+(mStatus(m,r.vals[m.k],r.targets&&r.targets[m.k])==='ng'?'di luar spek':'sesuai')+')')});
   const ng=P.checks.filter(c=>r.checks&&r.checks[c.k]==='ng').map(c=>c.label);
   if(ng.length)L.push('Temuan NG: '+ng.join('; '));
+  if(P.aging&&(r.rolls||[]).length)L.push('Roll: '+rollsText(r));
+  if(P.dry&&r.kts==='ada')L.push('KTS: Ada'+(r.defect?' - '+r.defect:''));
   if(r.note)L.push('Catatan: '+r.note);
   return L.join('\n');
 }
@@ -1473,48 +1626,75 @@ function tFiltered(){
   let cut=0;
   if(f.range==='today')cut=startOfDay(new Date()).getTime();
   else if(f.range!=='all')cut=Date.now()-Number(f.range)*86400000;
-  return visibleReports().filter(r=>{
+  return tolakanItems().filter(r=>{
     if(!isTolakan(r))return false;
     if(f.proc!=='all'&&r.proc!==f.proc)return false;
     if(f.st!=='all'&&tolakanState(r)!==f.st)return false;
     if(cut&&new Date(r.createdAt).getTime()<cut)return false;
-    if(q){const hay=[r.wo,r.product,r.customer,r.machine,r.operatorName,r.defect,r.size].join(' ').toLowerCase();if(!hay.includes(q))return false}
+    if(q){const hay=[r.wo,r.product,r.customer,r.machine,r.operatorName,r.defect,r.size,r.no].join(' ').toLowerCase();if(!hay.includes(q))return false}
     return true;
   });
 }
+function tInfo(r){
+  const P=PROC[r.proc]||{},L=[],add=(l,v)=>{if(v!=null&&String(v).trim()!==''&&v!=='—')L.push(l+': '+v)};
+  if(r.vid){
+    const x=r.rep,k=r.roll,c=k.check;
+    add('Roll',k.no+' · '+fmtInt(k.m)+' m');add('Komposisi',x.komposisi);
+    add('Sumber',[k.s==='ng'?'QC Lami':'',c&&c.status==='ng'?'QC Aging':''].filter(Boolean).join(' dan '));
+    add('QC Lami',x.inspector||x.operatorName);
+    if(c)add('QC Aging',(c.inspector||'')+' · '+(c.date||'')+' · Shift '+(c.shift||'—'));
+    if(x.kts==='ada')add('KTS lami',x.defect);
+    if(c&&c.kts==='ada')add('KTS aging',c.ktsNote);
+    return L;
+  }
+  if(P.kind==='log'){
+    add('Mesin',[r.machine,r.op].filter(Boolean).join(' · '));
+    add(P.sizeLabel?'Ukuran potong':'Ukuran',r.size);add('Jenis',r.sub);
+    add('Qty',r.qp!=null?'Pass '+fmtInt(r.qp)+' · NG '+fmtInt(r.qn||0)+' '+unitOf(r):'');
+    add('No. dus NG',r.dusNg);add('Inspector',r.operatorName);
+    return L;
+  }
+  add('Mesin',r.machine);add('Batch',r.batch);
+  P.measures.forEach(m=>{const v=r.vals&&r.vals[m.k];if(v!=null&&mStatus(m,v,r.targets&&r.targets[m.k])==='ng')L.push(m.label+': '+fmtNum(v)+' '+m.unit+' (spek '+specText(m)+')')});
+  P.checks.forEach(c=>{if(r.checks&&r.checks[c.k]==='ng')L.push('NG: '+c.label)});
+  add('Catatan',r.note);add('Operator',r.operatorName);
+  return L;
+}
 function tChip(r){
   const st=tolakanState(r);
-  if(st==='na')return '<span class="faint" title="Tindakan tersedia untuk Bag Making, Spout, Slitting, dan Rewind">—</span>';
+  if(st==='na')return '<span class="faint" title="Tindakan tersedia untuk Bag Making, Spout, Slitting, Rewind, dan Dry Laminasi">—</span>';
   if(st==='wait')return chip('hold','Menunggu');
   const t=TINDAKAN[st]||{c:'mute',t:st};return chip(t.c,t.t);
 }
 function tResultsHTML(){
   const rs=tFiltered();
   const ng=rs.reduce((a,r)=>a+(r.qn>0?r.qn:0),0),ngTxt=sumUnits(rs,r=>r.qn>0?r.qn:0),wait=rs.filter(r=>canAct(r)&&!r.tindakan).length,done=rs.filter(r=>canAct(r)&&r.tindakan).length;
-  const ct=$('#tcount');if(ct)ct.textContent=rs.length+' laporan tolakan';
-  const strip='<div class="panel strip"><div><div class="n">'+rs.length+'</div><div class="l">Laporan tolakan</div></div>'+
-    '<div><div class="n" style="color:'+(ng?'var(--ng)':'inherit')+'">'+ngTxt+'</div><div class="l">Total Not Pass</div></div>'+
+  const ct=$('#tcount');if(ct)ct.textContent=rs.length+' item tolakan';
+  const strip='<div class="panel strip"><div><div class="n">'+rs.length+'</div><div class="l">Item tolakan</div></div>'+
+    '<div><div class="n" style="color:'+(ng?'var(--ng)':'inherit')+';font-size:'+(ngTxt.includes('·')?'22px':'34px')+'">'+ngTxt+'</div><div class="l">Total Not Pass</div></div>'+
     '<div><div class="n" style="color:'+(wait?'var(--hold)':'inherit')+'">'+wait+'</div><div class="l">Menunggu tindakan</div></div>'+
     '<div><div class="n">'+done+'</div><div class="l">Sudah ditindak</div></div></div>';
+  const bp={};rs.forEach(r=>{const k=(PROC[r.proc]||{label:r.proc}).label;const b=bp[k]||(bp[k]={n:0,u:{}});b.n++;if(r.qn>0)b.u[unitOf(r)]=(b.u[unitOf(r)]||0)+r.qn});
+  const brk=rs.length?'<div class="panel pad" style="display:flex;gap:8px 18px;flex-wrap:wrap;align-items:center"><span class="faint" style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:600">Per proses</span>'+Object.keys(bp).map(k=>'<span style="font-size:14px"><b style="font-weight:600">'+esc(k)+'</b> '+bp[k].n+' item'+(Object.keys(bp[k].u).length?' · <span class="mono" style="color:var(--ng)">'+Object.keys(bp[k].u).map(u=>fmtInt(bp[k].u[u])+' '+u).join(' + ')+'</span>':'')+'</span>').join('')+'</div>':'';
   if(!rs.length)return strip+'<div class="panel empty"><b>Tidak ada tolakan</b><span>Ubah filter atau periode untuk melihat tolakan lain.</span></div>';
   const rows=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
     return '<tr data-act="open" data-id="'+r.id+'" tabindex="0" class="g-'+P.group+'"><td>'+fmtT(r.createdAt)+'</td><td>'+esc(r.shift||'—')+'</td>'+
     '<td><span style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+'</span></td>'+
     '<td class="mono">'+esc(r.wo)+'</td><td>'+esc(r.product)+'</td><td>'+esc(r.customer||'—')+'</td>'+
-    '<td style="max-width:260px;overflow-wrap:anywhere">'+esc(causeOf(r))+'</td>'+
-    '<td class="mono">'+(r.qn>0?fmtInt(r.qn):'—')+'</td><td>'+tChip(r)+'</td></tr>'}).join('');
+    '<td style="min-width:240px;max-width:340px;overflow-wrap:anywhere"><div class="cell2"><b style="font-weight:500">'+esc(causeOf(r))+'</b>'+tInfo(r).map(l=>'<small>'+esc(l)+'</small>').join('')+'</div></td>'+
+    '<td class="mono">'+(r.qn>0?fmtInt(r.qn)+' '+unitOf(r):'—')+'</td><td><div class="cell2">'+tChip(r)+(r.tindakanNote?'<small>'+esc(r.tindakanNote)+'</small>':'')+(r.tindakanBy?'<small>'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</small>':'')+'</div></td></tr>'}).join('');
   const cards=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
     return '<button class="card g-'+P.group+'" data-act="open" data-id="'+r.id+'"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+'</span>'+tChip(r)+'</div>'+
     '<div class="r2"><span class="pdot"></span>'+esc(plabel(r,P))+'</div>'+
-    '<div style="font-size:14px;overflow-wrap:anywhere">'+esc(causeOf(r))+'</div>'+
+    '<div style="font-size:14px;overflow-wrap:anywhere"><b>'+esc(causeOf(r))+'</b>'+tInfo(r).map(l=>'<div class="faint" style="font-size:13px">'+esc(l)+'</div>').join('')+(r.tindakanNote?'<div style="font-size:13px;margin-top:4px">Tindakan: '+esc(r.tindakanNote)+'</div>':'')+'</div>'+
     '<div class="r3"><span>Shift '+esc(r.shift||'—')+'</span><span>'+esc(r.product)+'</span>'+(r.customer?'<span>'+esc(r.customer)+'</span>':'')+''+(r.qn>0?'<span class="mono" style="color:var(--ng)">'+fmtInt(r.qn)+' '+unitOf(r)+' NG</span>':'')+'<span>'+fmtT(r.createdAt)+'</span></div></button>'}).join('');
-  return strip+'<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Penyebab</th><th>Not Pass</th><th>Tindakan</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
+  return strip+brk+'<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Penyebab dan detail</th><th>Not Pass</th><th>Tindakan</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
 }
 function tolakanHTML(me){
   const f=S.tf,sel=(v,c)=>c===v?' selected':'';
   const opts='<option value="all"'+sel('all',f.proc)+'>Semua proses</option>'+GROUPS.map(g=>'<optgroup label="'+esc(g.label)+'">'+g.items.map(i=>'<option value="'+i+'"'+sel(i,f.proc)+'>'+esc(PROC[i].label)+'</option>').join('')+'</optgroup>').join('');
-  return '<div class="pagehead"><div><h1>Tolakan</h1><p class="sub" id="tcount">'+tFiltered().length+' laporan tolakan</p></div></div>'+
-   '<p class="muted" style="max-width:68ch">Rekap semua produk Not Pass atau di luar spesifikasi dari seluruh proses. Tindakan bisa diberikan untuk Bag Making, Spout, Slitting, dan Rewind.</p>'+
+  return '<div class="pagehead"><div><h1>Tolakan</h1><p class="sub" id="tcount">'+tFiltered().length+' item tolakan</p></div></div>'+
+   '<p class="muted" style="max-width:68ch">Rekap semua produk Not Pass atau di luar spesifikasi dari seluruh proses. Tindakan bisa diberikan untuk Bag Making, Spout, Slitting, Rewind, dan Dry Laminasi. Untuk Dry Laminasi, yang tampil hanya roll yang QC Not Pass (satu baris per roll). Progress Sortir hanya untuk Bag Making dan Slitting.</p>'+
    '<div class="filters">'+
     '<div class="fld"><label for="tq">Cari</label><input class="in" id="tq" data-tf="q" type="search" placeholder="No. PR, produk, defect" value="'+esc(f.q)+'" autocomplete="off"></div>'+
     '<div class="fld"><label for="tp">Proses</label><select class="in" id="tp" data-tf="proc">'+opts+'</select></div>'+
@@ -1546,6 +1726,7 @@ function sFiltered(){
     return true;
   }).sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));
 }
+const sPl=(r,P)=>esc(plabel(r,P))+(r.vid&&TINDAKAN[r.tindakan]?' <span class="faint" style="font-size:13px">· '+esc(TINDAKAN[r.tindakan].t)+'</span>':'');
 function sResultsHTML(){
   const rs=sFiltered(),all=sortirList();
   const c=k=>all.filter(r=>sortSt(r)===k).length,tot=all.reduce((a,r)=>a+(r.qn||0),0),dn=all.reduce((a,r)=>a+sortDone(r),0),okT=all.reduce((a,r)=>a+sortSum(r).ok,0),ngT=all.reduce((a,r)=>a+sortSum(r).ng,0);
@@ -1557,12 +1738,12 @@ function sResultsHTML(){
   if(!rs.length)return strip+'<div class="panel empty"><b>Tidak ada sortiran</b><span>Produk yang sudah diberi tindakan Sortir di menu Tolakan akan muncul di sini otomatis.</span></div>';
   const rows=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'bag'},st=SORT_ST[sortSt(r)];
     return '<tr data-act="open" data-id="'+r.id+'" tabindex="0" class="g-'+P.group+'"><td>'+fmtT(r.createdAt)+'</td><td>'+esc(r.shift||'—')+'</td>'+
-    '<td><span style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+'</span></td>'+
+    '<td><span style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+sPl(r,P)+'</span></td>'+
     '<td class="mono">'+esc(r.wo)+'</td><td>'+esc(r.product)+'</td><td>'+esc(r.customer||'—')+'</td>'+
     '<td class="mono">'+(r.qn>0?fmtInt(r.qn):'—')+'</td><td class="mono">'+fmtInt(sortSum(r).ok)+'</td><td class="mono" style="color:'+(sortSum(r).ng?'var(--ng)':'inherit')+'">'+fmtInt(sortSum(r).ng)+'</td><td>'+sortBar(r)+'</td><td><span class="chips">'+chip(st.c,st.t)+'</span></td></tr>'}).join('');
   const cards=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'bag'},st=SORT_ST[sortSt(r)];
     return '<button class="card g-'+P.group+'" data-act="open" data-id="'+r.id+'"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+'</span>'+chip(st.c,st.t)+'</div>'+
-    '<div class="r2"><span class="pdot"></span>'+esc(plabel(r,P))+'</div><div>'+sortBar(r)+'</div>'+
+    '<div class="r2"><span class="pdot"></span>'+sPl(r,P)+'</div><div>'+sortBar(r)+'</div>'+
     '<div class="r3"><span class="mono">OK '+fmtInt(sortSum(r).ok)+'</span><span class="mono" style="color:var(--ng)">NG '+fmtInt(sortSum(r).ng)+'</span><span>Shift '+esc(r.shift||'—')+'</span><span>'+esc(r.product)+'</span>'+(r.customer?'<span>'+esc(r.customer)+'</span>':'')+'<span>'+fmtT(r.createdAt)+'</span></div></button>'}).join('');
   return strip+'<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Not Pass</th><th>Sortir OK</th><th>Sortir NG</th><th>Progress</th><th>Status</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
 }
@@ -1576,7 +1757,7 @@ function sortirHTML(me){
    '</div><div id="sresults" style="display:flex;flex-direction:column;gap:16px">'+sResultsHTML()+'</div>';
 }
 function sortirSection(r){
-  if(!(canAct(r)&&r.tindakan==='sortir'))return '';
+  if(r.vid||!(canAct(r)&&isSortirT(r.tindakan)))return '';
   const st=sortSt(r),x=SORT_ST[st],sm=sortSum(r),L=sortLog(r).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.at).localeCompare(String(a.at))),can=canSortir(r),me=getMe();
   const tot=r.qn||0,left=Math.max(0,tot-sm.done),un=unitOf(r);
   const head='<div style="display:flex;flex-direction:column;gap:10px">'+'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+chip(x.c,x.t)+'<span class="muted" style="font-size:14px">'+(tot?'Sisa '+fmtInt(left)+' '+un:'')+'</span></div>'+((tot||st==='selesai')?sortBar(r):'')+
@@ -1603,6 +1784,144 @@ function sortirSection(r){
   const fin=can?'<div class="actions" style="margin-top:12px">'+(st==='selesai'?'<button class="btn" data-act="sreopen" data-id="'+r.id+'">Buka lagi sortiran</button>':'<button class="btn" data-act="sfinish" data-id="'+r.id+'">'+ic('check')+'Tandai sortir selesai</button>')+'</div>':'';
   return '<section class="panel pad"><h3 style="margin-bottom:2px">Progress sortir</h3><p class="muted" style="font-size:13px;margin-bottom:10px">Muncul karena tindakan Sortir sudah diberikan. Input bisa ditambah berkali-kali oleh shift atau operator yang berbeda.</p>'+head+'<h4 style="font-size:15px;margin:14px 0 6px">Riwayat input</h4>'+rows+form+fin+'</section>';
 }
+function agingSection(r){
+  if(!(PROC[r.proc]&&PROC[r.proc].aging&&(r.rolls||[]).length))return '';
+  const po=planOut(r),now=Date.now();
+  const rows=r.rolls.map(k=>{
+    const st=k.check?(AG_ST[k.check.status]||AG_ST.pass):null;
+    return '<div class="row"><div><b style="font-weight:600" class="mono">'+esc(k.no)+'</b><div class="sp">'+fmtInt(k.m)+' m · QC Lami '+(AG_ST[k.s]||AG_ST.pass).t+(k.tindakan&&TINDAKAN[k.tindakan]?' · '+TINDAKAN[k.tindakan].t:'')+'</div></div><div style="text-align:right">'+(st?chip(st.c,st.t)+'<div class="sp">'+esc(k.check.inspector||'')+' · '+esc(k.check.date||'')+'</div>':(po&&po.getTime()<=now?chip('hold','Siap dicek'):chip('mute','Dalam aging')))+'</div></div>';
+  }).join('');
+  return '<section><h3 style="margin-bottom:4px">Aging</h3><div class="dl"><div class="row"><div>Komposisi</div><div class="v">'+esc(r.komposisi||'—')+'</div></div><div class="row"><div>Durasi aging</div><div class="v">'+esc(r.agingDays)+' hari</div></div><div class="row"><div>Masuk aging</div><div class="v">'+esc(fmtDT(new Date(r.agingIn)))+'</div></div><div class="row"><div>Plan keluar aging</div><div class="v">'+esc(fmtDT(po))+'</div></div></div>'+
+    '<h3 style="margin:14px 0 4px">Roll ('+r.rolls.length+')</h3><div class="dl">'+rows+'</div></section>';
+}
+const AG_STT={due:{t:'Siap dicek',c:'hold'},wait:{t:'Dalam aging',c:'mute'},done:{t:'Sudah dicek',c:'ok'}};
+function agFiltered(){
+  const f=S.ag,q=f.q.trim().toLowerCase();
+  return agingItems().filter(x=>{
+    if(f.st!=='all'&&x.st!==f.st)return false;
+    if(q){const hay=[x.r.product,x.r.wo,x.k.no,x.r.customer,x.r.komposisi].join(' ').toLowerCase();if(!hay.includes(q))return false}
+    return true;
+  }).sort((a,b)=>a.st==='done'&&b.st==='done'?String(b.k.check.at).localeCompare(String(a.k.check.at)):((a.po?a.po.getTime():0)-(b.po?b.po.getTime():0)));
+}
+const agTind=x=>rollNG(x.k)?(x.k.tindakan&&TINDAKAN[x.k.tindakan]?chip(TINDAKAN[x.k.tindakan].c,TINDAKAN[x.k.tindakan].t):chip('hold','Menunggu tindakan')):'';
+function agCheckCell(x){
+  const c=x.k.check;if(!c)return '<span class="chips">'+chip(AG_STT[x.st].c,AG_STT[x.st].t)+agTind(x)+'</span>';
+  const st=AG_ST[c.status]||AG_ST.pass;
+  return '<div style="display:flex;flex-direction:column;gap:2px"><span class="chips">'+chip(st.c,st.t)+agTind(x)+'</span>'+(c.kts==='ada'?'<span style="font-size:13px;color:var(--ng)">KTS: '+esc(c.ktsNote||'Ada')+'</span>':'')+'<span class="faint" style="font-size:13px">'+esc(c.date?fmtD(new Date(c.date+'T00:00:00')):'')+' · Shift '+esc(c.shift||'—')+'</span><span style="font-size:13px">'+esc(c.inspector||'')+'</span></div>';
+}
+function relT(ms){
+  const m=Math.round(ms/60000);if(m<1)return 'sekarang';
+  const d=Math.floor(m/1440),h=Math.floor(m%1440/60),mi=m%60;
+  return d?d+' hari '+h+' jam':h?h+' jam '+mi+' mnt':mi+' mnt';
+}
+function schedGroups(){
+  const q=S.ag.q.trim().toLowerCase(),now=Date.now(),by={};
+  agingItems().forEach(x=>{
+    if(x.st==='done'||!x.po)return;
+    if(q&&![x.r.product,x.r.wo,x.k.no,x.r.customer,x.r.komposisi].join(' ').toLowerCase().includes(q))return;
+    const g=by[x.r.id]||(by[x.r.id]={r:x.r,po:x.po,items:[]});g.items.push(x);
+  });
+  return Object.keys(by).map(k=>by[k]).sort((a,b)=>a.po-b.po);
+}
+function agSchedHTML(){
+  const gs=schedGroups(),now=Date.now(),td=startOfDay(new Date()).getTime();
+  if(!gs.length)return '<div class="panel empty"><b>Tidak ada jadwal</b><span>Belum ada produk dalam aging, atau semua roll sudah diperiksa.</span></div>';
+  const dayLbl=t=>{const d0=startOfDay(new Date(t)).getTime(),diff=Math.round((d0-td)/86400000);const l=new Date(t).toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long'});return diff===0?'Hari ini · '+l:diff===1?'Besok · '+l:l};
+  const sections=[],due=gs.filter(g=>g.po.getTime()<=now);
+  if(due.length)sections.push(['Sudah selesai aging, siap dicek',due]);
+  const map={};gs.filter(g=>g.po.getTime()>now).forEach(g=>{const k=ymd(g.po);(map[k]=map[k]||[]).push(g)});
+  Object.keys(map).sort().forEach(k=>sections.push([dayLbl(map[k][0].po.getTime()),map[k]]));
+  return sections.map(sec=>'<section class="panel pad"><h3 style="margin-bottom:4px">'+esc(sec[0])+'</h3><div class="dl">'+sec[1].map(g=>{
+    const r=g.r,isDue=g.po.getTime()<=now,tot=g.items.reduce((a,x)=>a+(x.k.m||0),0),dn=g.items.filter(x=>x.st==='due').length;
+    return '<div class="row" data-act="agopenrep" data-id="'+esc(r.id)+'" tabindex="0" role="button" style="cursor:pointer"><div><b style="font-weight:600">'+esc(r.product)+'</b><div class="sp">'+esc(r.wo)+' · '+esc(r.customer||'—')+' · '+g.items.length+' roll · '+fmtInt(tot)+' m</div><div class="sp">Roll: '+esc(g.items.map(x=>x.k.no).join(', '))+'</div></div>'+
+      '<div style="text-align:right"><div class="mono" style="font-weight:600">'+(isDue?'':pad(g.po.getHours())+':'+pad(g.po.getMinutes()))+(isDue?fmtDT(g.po):'')+'</div><div>'+(isDue?chip('hold','Siap dicek'+(dn&&dn<g.items.length?' ('+dn+')':'')):chip('mute',relT(g.po.getTime()-now)+' lagi'))+'</div></div></div>'}).join('')+'</div></section>').join('');
+}
+function agCountTxt(){return S.ag.view==='jadwal'?schedGroups().length+' jadwal produk':agFiltered().length+' roll'}
+function agResultsHTML(){
+  if(S.ag.view==='jadwal'){const ct0=$('#agcount');if(ct0)ct0.textContent=agCountTxt();return agSchedHTML()}
+  const all=agingItems(),rs=agFiltered();
+  const c=k=>all.filter(x=>x.st===k).length,ngC=all.filter(x=>x.k.check&&x.k.check.status==='ng').length;
+  const ct=$('#agcount');if(ct)ct.textContent=rs.length+' roll';
+  S.agPick=S.agPick.filter(k=>all.some(x=>x.key===k&&x.st==='due'));
+  const strip='<div class="panel strip"><div><div class="n" style="color:'+(c('due')?'var(--hold)':'inherit')+'">'+c('due')+'</div><div class="l">Siap dicek</div></div>'+
+    '<div><div class="n">'+c('wait')+'</div><div class="l">Dalam aging</div></div>'+
+    '<div><div class="n">'+c('done')+'</div><div class="l">Sudah dicek</div></div>'+
+    '<div><div class="n" style="color:'+(ngC?'var(--ng)':'inherit')+'">'+ngC+'</div><div class="l">QC Not Pass saat aging</div></div></div>';
+  const bulk='<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="btn pri" data-act="agbulk"'+(S.agPick.length?'':' disabled')+'>'+ic('check')+'Periksa roll terpilih ('+S.agPick.length+')</button><span class="muted" style="font-size:13px">Centang roll yang berstatus Siap dicek untuk memeriksa sekaligus.</span></div>';
+  if(!rs.length)return strip+'<div class="panel empty"><b>Tidak ada roll</b><span>Roll dari laporan Dry Laminasi muncul di sini setelah durasi aging selesai.</span></div>';
+  const dueShown=rs.filter(x=>x.st==='due');
+  const rows=rs.map(x=>{const r=x.r,k=x.k;
+    return '<tr data-act="agopen" data-key="'+esc(x.key)+'" tabindex="0" class="g-laminasi"><td>'+(x.st==='due'?'<input type="checkbox" class="agchk" data-agpick="'+esc(x.key)+'"'+(S.agPick.includes(x.key)?' checked':'')+' aria-label="Pilih roll '+esc(k.no)+'">':'')+'</td>'+
+    '<td><div class="cell2"><b style="font-weight:500">'+esc(r.product)+'</b><small>'+esc(r.customer||'—')+'</small></div></td><td class="mono">'+esc(r.wo)+'</td><td><div class="cell2"><b class="mono" style="font-weight:500">'+esc(k.no)+'</b><small class="mono">'+fmtInt(k.m)+' m</small></div></td><td>'+esc(r.komposisi||'—')+'</td>'+
+    '<td><div style="display:flex;flex-direction:column;gap:2px"><span>'+chip((AG_ST[k.s]||AG_ST.pass).c,(AG_ST[k.s]||AG_ST.pass).t)+'</span><span class="faint" style="font-size:13px">'+esc(r.operatorName)+'</span></div></td>'+
+    '<td class="mono">'+esc(r.agingDays)+'</td><td>'+esc(fmtDT(new Date(r.agingIn)))+'</td><td>'+esc(fmtDT(x.po))+'</td><td>'+agCheckCell(x)+'</td></tr>'}).join('');
+  const cards=rs.map(x=>{const r=x.r,k=x.k;
+    return '<div class="card g-laminasi"><button class="card-in" data-act="agopen" data-key="'+esc(x.key)+'" style="all:unset;display:flex;flex-direction:column;gap:6px;cursor:pointer"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+' · Roll '+esc(k.no)+'</span>'+chip(AG_STT[x.st].c,AG_STT[x.st].t)+'</div>'+
+    '<div class="r2">'+esc(r.product)+'</div><div class="r3"><span class="mono">'+fmtInt(k.m)+' m</span><span>'+esc(r.customer||'—')+'</span><span>Keluar aging '+esc(fmtDT(x.po))+'</span></div>'+(k.check?'<div class="ncard">'+chip((AG_ST[k.check.status]||AG_ST.pass).c,(AG_ST[k.check.status]||AG_ST.pass).t)+' '+esc(k.check.inspector||'')+' · Shift '+esc(k.check.shift||'—')+'</div>':'')+'</button>'+
+    (x.st==='due'?'<label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-size:14px"><input type="checkbox" class="agchk" data-agpick="'+esc(x.key)+'"'+(S.agPick.includes(x.key)?' checked':'')+'> Pilih untuk diperiksa</label>':'')+'</div>'}).join('');
+  return strip+(dueShown.length?bulk:'')+'<div class="panel tblwrap"><table><thead><tr><th></th><th>Produk / customer</th><th>No. PR</th><th>Roll / kuantitas</th><th>Komposisi</th><th>QC Lami</th><th>Durasi (hari)</th><th>Masuk aging</th><th>Plan keluar</th><th>QC Aging Check</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
+}
+function agingHTML(me){
+  const f=S.ag,sel=(v,c)=>c===v?' selected':'';
+  return '<div class="pagehead"><div><h1>Monitoring Aging</h1><p class="sub" id="agcount">'+agCountTxt()+'</p></div>'+(isSpv()&&S.canDownload?'<button class="btn" data-act="agexport">'+ic('download')+'Unduh CSV</button>':'')+'</div>'+
+   '<p class="muted" style="max-width:68ch">Roll dari laporan Dry Laminasi otomatis muncul di sini setelah durasi aging selesai. Pemeriksaan dilakukan per roll dan nama operator diisi manual.</p>'+
+   '<div class="seg two" role="tablist" style="max-width:360px">'+[['jadwal','Jadwal keluar'],['list','Daftar roll']].map(o=>'<div class="cell"><button type="button" role="tab" aria-selected="'+(f.view===o[0])+'" data-act="agview" data-v="'+o[0]+'" style="all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;justify-content:center;min-height:44px;border:1px solid '+(f.view===o[0]?'var(--accent)':'var(--line)')+';border-radius:8px;font-weight:600;font-size:14px;cursor:pointer;background:'+(f.view===o[0]?'var(--accent-soft)':'var(--surface)')+';color:'+(f.view===o[0]?'var(--accent)':'var(--fg-2)')+'">'+o[1]+'</button></div>').join('')+'</div>'+
+   '<div class="filters">'+
+    '<div class="fld"><label for="agq">Cari</label><input class="in" id="agq" data-ag="q" type="search" placeholder="Produk, No. PR, No. Roll, customer" value="'+esc(f.q)+'" autocomplete="off"></div>'+
+    ''+(f.view==='list'?'<div class="fld"><label for="ags">Status</label><select class="in" id="ags" data-ag="st"><option value="due"'+sel('due',f.st)+'>Siap dicek</option><option value="wait"'+sel('wait',f.st)+'>Dalam aging</option><option value="done"'+sel('done',f.st)+'>Sudah dicek</option><option value="all"'+sel('all',f.st)+'>Semua</option></select></div>':'')+'</div><div id="agresults" style="display:flex;flex-direction:column;gap:16px">'+agResultsHTML()+'</div>';
+}
+function agingModalHTML(){
+  const items=S.agingSel.map(k=>agingItems().find(x=>x.key===k)).filter(Boolean);
+  if(!items.length)return '';
+  const one=items.length===1?items[0]:null,c=one&&one.k.check,now=new Date();
+  const locked=items.some(x=>x.st==='wait');
+  const past=agingItems().map(x=>x.k.check&&x.k.check.inspector);
+  const list='<div class="dl">'+items.map(x=>'<div class="row"><div><b class="mono" style="font-weight:600">'+esc(x.r.wo)+' · Roll '+esc(x.k.no)+'</b><div class="sp">'+esc(x.r.product)+' · '+fmtInt(x.k.m)+' m</div></div><div style="text-align:right">'+chip(AG_STT[x.st].c,AG_STT[x.st].t)+'<div class="sp">Keluar '+esc(fmtDT(x.po))+'</div></div></div>').join('')+'</div>';
+  const form=locked?'<div class="note">Roll ini belum selesai aging. Pemeriksaan bisa dilakukan setelah '+esc(fmtDT(one.po))+'.</div>':
+   '<form data-form="aging" style="display:flex;flex-direction:column;gap:12px" novalidate>'+
+    '<div class="fgrid"><div class="fld"><label for="a_date">Tanggal pemeriksaan</label><input class="in" type="date" id="a_date" name="adate" value="'+(c&&c.date?esc(c.date):ymd(now))+'" max="'+ymd(now)+'"></div>'+
+    '<div class="fld"><label for="a_shift">Shift</label><select class="in" id="a_shift" name="ashift">'+['1','2','3'].map(v=>'<option value="'+v+'"'+((c&&c.shift?c.shift:shiftOf(now))===v?' selected':'')+'>Shift '+v+'</option>').join('')+'</select></div></div>'+
+    '<div class="fld"><label for="a_insp">QC Inspector (nama) <span class="req">*</span></label><input class="in" id="a_insp" name="ainsp" autocomplete="off" list="dl_ainsp" value="'+esc(c?c.inspector:'')+'" placeholder="Nama, pisahkan dengan /"></div>'+dlist('dl_ainsp',past)+
+    '<div class="fld"><span class="lbl" id="lbl_astatus">Status aging</span><div class="seg" role="radiogroup" aria-labelledby="lbl_astatus">'+[['pass','QC Passed','ok'],['biru','Label Biru','bl'],['ng','QC Not Pass','ng']].map(o=>'<div class="cell"><input type="radio" name="astatus" id="astatus_'+o[0]+'" value="'+o[0]+'"'+(((c&&c.status)||'pass')===o[0]?' checked':'')+'><label class="'+o[2]+'" for="astatus_'+o[0]+'">'+o[1]+'</label></div>').join('')+'</div></div>'+
+    '<div class="fld"><span class="lbl" id="lbl_akts">KTS</span>'+segTwo('akts',[['tidak','Tidak ada','ok',!(c&&c.kts==='ada')],['ada','Ada','ng',!!(c&&c.kts==='ada')]])+'</div>'+
+    '<div class="fld"><label for="a_ktsn">Keterangan KTS <span class="faint" style="font-weight:400">(wajib jika KTS ada)</span></label><textarea class="in" id="a_ktsn" name="aktsn">'+esc(c?c.ktsNote||'':'')+'</textarea></div>'+
+    '<div class="fld"><label for="a_note">Catatan (opsional)</label><textarea class="in" id="a_note" name="anote">'+esc(c?c.note||'':'')+'</textarea></div>'+
+    '<div id="aErr" class="err" role="alert" hidden></div>'+
+    '<div><button class="btn pri" type="submit">'+ic('check')+(c?'Simpan perubahan':'Simpan pemeriksaan')+(items.length>1?' ('+items.length+' roll)':'')+'</button></div></form>';
+  const vit=one?rollItems(true).find(v=>v.id===one.key):null;
+  const tind=vit?tindakanBlock(vit):'';
+  return '<div class="shead g-laminasi"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>Monitoring Aging</div><h2 style="font-size:19px;margin-top:4px">'+(one?'Periksa roll '+esc(one.k.no):'Periksa '+items.length+' roll')+'</h2></div><button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div>'+list+form+tind;
+}
+async function submitAging(f){
+  const me=getMe();if(!me||!showAging())return;
+  const insp=f.elements['ainsp'].value.trim();
+  if(!insp){showErr('aErr','Isi nama QC Inspector.');return}
+  const kts=(f.querySelector('input[name="akts"]:checked')||{}).value==='ada'?'ada':'tidak',ktsNote=f.elements['aktsn'].value.trim();
+  if(kts==='ada'&&!ktsNote){showErr('aErr','Isi keterangan KTS.');return}
+  const date=f.elements['adate'].value||ymd(new Date()),shift=f.elements['ashift'].value,status=agS((f.querySelector('input[name="astatus"]:checked')||{}).value),note=f.elements['anote'].value.trim();
+  const items=S.agingSel.map(k=>agingItems().find(x=>x.key===k)).filter(x=>x&&x.st!=='wait');
+  if(!items.length)return;
+  const byRep={};items.forEach(x=>{(byRep[x.r.id]=byRep[x.r.id]||[]).push(x.k.id)});
+  const now=new Date().toISOString();let ok=true;
+  for(const rid of Object.keys(byRep)){
+    const r=S.reports.find(x=>x.id===rid);if(!r)continue;
+    const rolls=(r.rolls||[]).map(k=>byRep[rid].includes(k.id)?Object.assign({},k,{check:{date,shift,inspector:insp,status,kts,ktsNote,note,at:now,by:me.id,byName:me.name}}):k);
+    ok=(await safe(()=>put('reports',Object.assign({},r,{rolls}))))&&ok;
+  }
+  if(ok){toast(items.length+' roll diperiksa');S.modal=null;S.agingSel=[];S.agPick=[];renderModal();render()}
+}
+async function exportAging(){
+  if(!dlh&&!S.remote)return;
+  const head=['Nama Produk','No. PR','No. Roll','Kuantiti (m)','Komposisi','Customer','QC Lami Inspector','QC Lami Status','Durasi Aging (hari)','Actual In Aging Tanggal','Actual In Aging Pukul','Plan Out Aging Tanggal','Plan Out Aging Pukul','Tanggal Pemeriksaan','Shift','QC Aging Inspector','QC Aging Status','Catatan'];
+  const lines=[head.map(csvEscape).join(',')];
+  agFiltered().forEach(x=>{const r=x.r,k=x.k,c=k.check,ai=new Date(r.agingIn),po=x.po,hm=d=>d?pad(d.getHours())+':'+pad(d.getMinutes()):'';
+    lines.push([r.product,r.wo,k.no,k.m,r.komposisi,r.customer,r.operatorName,(AG_ST[k.s]||AG_ST.pass).t,r.agingDays,fmtD(ai),hm(ai),po?fmtD(po):'',hm(po),c?c.date:'',c?c.shift:'',c?c.inspector:'',c?(AG_ST[c.status]||AG_ST.pass).t:'',c?c.note:''].map(csvEscape).join(','));
+  });
+  const fn='monitoring-aging-'+new Date().toISOString().slice(0,10)+'.csv',txt='\ufeff'+lines.join('\r\n');
+  if(!dlh){downloadText(fn,txt);toast('File CSV diunduh');return}
+  try{await dlh.save({filename:fn,data:txt});toast('File CSV siap disimpan')}
+  catch(e){if(!e||e.code!=='declined')toast('File CSV tidak bisa disimpan di tampilan ini.',true)}
+}
 function qcNoteSection(r){
   const n=r.qcNote&&r.qcNote.text?r.qcNote:null,can=isSpv();
   if(!n&&!can)return '';
@@ -1621,7 +1940,7 @@ async function submitQcNote(f){
   if(ok){toast(text?'Catatan disimpan. '+r.operatorName+' akan mendapat notifikasi.':'Catatan dihapus');document.activeElement&&document.activeElement.blur&&document.activeElement.blur();renderModal()}
 }
 async function putSortir(r,mut){
-  const cur=S.reports.find(x=>x.id===r.id)||r,me=getMe(),now=new Date().toISOString();
+  const cur=findItem(r.id)||r,me=getMe(),now=new Date().toISOString();
   const doc=Object.assign({},cur);const log=sortLog(cur).slice();
   const out=mut(doc,log,now,me);if(out===false)return false;
   doc.sortirLog=log;
@@ -1630,15 +1949,15 @@ async function putSortir(r,mut){
   else if(st!=='selesai'||!((doc.qn||0)?sm.done>=doc.qn:true))st=sm.done>0?'proses':'belum';
   if(st==='selesai'&&!old.finishedAt&&!doc.sortir)doc.sortir=old;
   doc.sortir={status:st,done:sm.done,by:me.id,name:me.name,at:now,startedAt:old.startedAt||(sm.done>0?now:null),finishedAt:st==='selesai'?(old.finishedAt||now):null};
-  return safe(()=>put('reports',doc));
+  return putItemDoc(doc);
 }
 async function submitSortirIn(f){
-  const r=S.reports.find(x=>x.id===f.dataset.id);if(!r||!canSortir(r))return;
+  const r=findItem(f.dataset.id);if(!r||!canSortir(r))return;
   const ok=toInt(f.elements['sok'].value),ng=toInt(f.elements['sng'].value),okN=isNaN(ok)?0:ok,ngN=isNaN(ng)?0:ng;
   const sorter=f.elements['ssorter'].value.trim();
   if(!sorter){showErr('sErr','Isi nama operator yang melakukan sortir.');return}
   if(okN+ngN<=0){showErr('sErr','Isi jumlah Sortir OK atau Sortir NG.');return}
-  const tot=r.qn||0,sum=sortSum(S.reports.find(x=>x.id===r.id)||r).done;
+  const tot=r.qn||0,sum=sortSum(findItem(r.id)||r).done;
   if(tot&&sum+okN+ngN>tot){showErr('sErr','Total disortir melebihi Not Pass ('+fmtInt(tot)+' '+unitOf(r)+'). Sisa yang bisa diinput: '+fmtInt(Math.max(0,tot-sum))+' '+unitOf(r)+'.');return}
   const date=f.elements['sdate'].value||ymd(new Date()),shift=f.elements['sshift'].value,note=f.elements['snote'].value.trim();
   const res=await putSortir(r,(doc,log,now,me)=>{
@@ -1817,13 +2136,23 @@ document.addEventListener('click',async e=>{
       if(r0&&me0&&noteUnread(r0,me0.id))safe(()=>put('memoReads',{id:noteSeenId(r0,me0.id),kind:'note',reportId:id,userId:me0.id,at:new Date().toISOString()})).then(()=>updateChrome());
       break}
     case 'closemodal':closeModal();break;
+    case 'addroll':{captureDraft();const d=curDraft();if(!d)break;const n=rollCount(d);d.rollN=n+1;const prev=d.data['rm_'+(n-1)];if(prev&&!d.data['rm_'+n])d.data['rm_'+n]=prev;saveDrafts();S.domDraft=null;render();break}
+    case 'delroll':{captureDraft();const d=curDraft(),i=+el.dataset.i;if(!d)break;const n=rollCount(d),ps=['rn','rm','rs','ri'];
+      if(n<=1){ps.forEach(q=>delete d.data[q+'_0'])}
+      else{for(let k=i;k<n-1;k++)ps.forEach(q=>{const v=d.data[q+'_'+(k+1)];if(v===undefined)delete d.data[q+'_'+k];else d.data[q+'_'+k]=v});ps.forEach(q=>delete d.data[q+'_'+(n-1)]);d.rollN=n-1}
+      saveDrafts();S.domDraft=null;render();break}
+    case 'agopen':{if(e.target.closest('input,label'))break;S.agingSel=[el.dataset.key];S.modal='aging';renderModal();break}
+    case 'agview':S.ag.view=el.dataset.v;render();break;
+    case 'agopenrep':{const ks=agingItems().filter(x=>x.r.id===id&&x.st==='due').map(x=>x.key);if(ks.length){S.agingSel=ks;S.modal='aging';renderModal()}else{S.detailId=id;S.confirmDel=null;renderModal()}break}
+    case 'agbulk':{if(!S.agPick.length)break;S.agingSel=S.agPick.slice();S.modal='aging';renderModal();break}
+    case 'agexport':exportAging();break;
     case 'sdel':S.confirmSdel=el.dataset.eid;renderModal();break;
     case 'sdelno':S.confirmSdel=null;renderModal();break;
-    case 'sdelyes':{const r=S.reports.find(x=>x.id===id);S.confirmSdel=null;if(!r||!canSortir(r))break;const eid=el.dataset.eid;
+    case 'sdelyes':{const r=findItem(id);S.confirmSdel=null;if(!r||!canSortir(r))break;const eid=el.dataset.eid;
       const ok=await putSortir(r,(doc,log)=>{const i=log.findIndex(e=>e.id===eid);if(i<0)return false;log.splice(i,1)});
       if(ok){toast('Input sortir dihapus');renderModal();updateChrome()}break}
-    case 'sfinish':{const r=S.reports.find(x=>x.id===id);if(!r||!canSortir(r))break;if(await putSortir(r,doc=>{doc.__forceSt='selesai'})){toast('Sortir ditandai selesai');renderModal();updateChrome()}break}
-    case 'sreopen':{const r=S.reports.find(x=>x.id===id);if(!r||!canSortir(r))break;if(await putSortir(r,doc=>{doc.__forceSt=sortSum(doc).done>0?'proses':'belum'})){toast('Sortir dibuka lagi');renderModal();updateChrome()}break}
+    case 'sfinish':{const r=findItem(id);if(!r||!canSortir(r))break;if(await putSortir(r,doc=>{doc.__forceSt='selesai'})){toast('Sortir ditandai selesai');renderModal();updateChrome()}break}
+    case 'sreopen':{const r=findItem(id);if(!r||!canSortir(r))break;if(await putSortir(r,doc=>{doc.__forceSt=sortSum(doc).done>0?'proses':'belum'})){toast('Sortir dibuka lagi');renderModal();updateChrome()}break}
     case 'copy':{const r=S.reports.find(x=>x.id===id);if(r)copyText(summaryText(r));break}
     case 'del':S.confirmDel=id;renderModal();break;
     case 'delno':S.confirmDel=null;renderModal();break;
@@ -1874,11 +2203,13 @@ document.addEventListener('submit',e=>{
   else if(k==='tindakan')submitTindakan(f);
   else if(k==='sortirin')submitSortirIn(f);
   else if(k==='qcnote')submitQcNote(f);
+  else if(k==='aging')submitAging(f);
   else if(k==='memo')submitMemo(f);
 });
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.filter==='q'){S.filters.q=t.value;$('#results').innerHTML=resultsHTML();return}
+  if(t.dataset&&t.dataset.ag==='q'){S.ag.q=t.value;$('#agresults').innerHTML=agResultsHTML();return}
   if(t.dataset&&t.dataset.sf==='q'){S.sf.q=t.value;$('#sresults').innerHTML=sResultsHTML();return}
   if(t.dataset&&t.dataset.tf==='q'){S.tf.q=t.value;$('#tresults').innerHTML=tResultsHTML();return}
   if(t.closest&&t.closest('#rform')){updateForm();queueSave()}
@@ -1886,6 +2217,8 @@ document.addEventListener('input',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset&&t.dataset.filter&&t.dataset.filter!=='q'){S.filters[t.dataset.filter]=t.value;$('#results').innerHTML=resultsHTML();return}
+  if(t.dataset&&t.dataset.agpick){const k=t.dataset.agpick;S.agPick=t.checked?Array.from(new Set(S.agPick.concat([k]))):S.agPick.filter(x=>x!==k);$('#agresults').innerHTML=agResultsHTML();return}
+  if(t.dataset&&t.dataset.ag&&t.dataset.ag!=='q'){S.ag[t.dataset.ag]=t.value;$('#agresults').innerHTML=agResultsHTML();const c=$('#agcount');if(c)c.textContent=agCountTxt();return}
   if(t.dataset&&t.dataset.sf&&t.dataset.sf!=='q'){S.sf[t.dataset.sf]=t.value;$('#sresults').innerHTML=sResultsHTML();const c=$('#scount');if(c)c.textContent=sFiltered().length+' laporan';return}
   if(t.dataset&&t.dataset.tf&&t.dataset.tf!=='q'){S.tf[t.dataset.tf]=t.value;$('#tresults').innerHTML=tResultsHTML();return}
   if(t.closest&&t.closest('#rform')){
@@ -1904,5 +2237,5 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&S.view==='
 init();
 })();
 </script>
-</body>
-</html>
+
+</body></html>
