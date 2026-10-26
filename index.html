@@ -87,6 +87,19 @@ button{cursor:pointer}
 .btn.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .btn.pri:hover{filter:brightness(1.08)}
 .btn.danger{color:var(--ng);border-color:var(--ng)}
+.btn.pri.saved{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+.btn.pri.saved:hover{filter:none;background:var(--ok-bg)}
+.hl{flex:none;--X:var(--accent);--Xbg:var(--accent-soft);border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface);box-shadow:0 1px 2px rgba(15,23,42,.05)}
+.hl.ng{--X:var(--ng);--Xbg:var(--ng-bg)} .hl.ok{--X:var(--ok);--Xbg:var(--ok-bg)} .hl.info{--X:var(--accent);--Xbg:var(--accent-soft)}
+.hl .hlh{display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--Xbg);border-bottom:1px solid color-mix(in srgb,var(--X) 28%,transparent)}
+.hl .hli{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--X);color:var(--surface);flex:none}
+.hl .hli svg{width:20px;height:20px}
+.hl .hlt{flex:1;min-width:0}
+.hl h3{margin:0;color:var(--fg);font-size:16px}
+.hl .hlsub{font-size:13px;color:var(--fg-2);margin:2px 0 0}
+.hl .hlb{padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.hl .hlview{padding-left:12px;border-left:3px solid var(--X)}
+.hl form{margin-top:14px!important;padding-top:14px;border-top:1px dashed var(--line)}
 .btn.sm{min-height:36px;padding:0 12px;font-size:14px}
 .btn.ghost{background:none;border-color:transparent;color:var(--fg-2)}
 .btn svg{width:18px;height:18px}
@@ -290,7 +303,7 @@ tbody tr:last-child td{border-bottom:0}
 .meter.w{width:96px;height:8px}
 .ncell{max-width:240px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:14px}
 .ncard{margin-top:6px;padding:8px 10px;border-radius:8px;background:var(--surface-2);font-size:14px;text-align:left;overflow-wrap:anywhere}
-.rollrow{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;padding:12px 0;border-top:1px solid var(--line)}
+.rollrow{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1fr) minmax(0,1.1fr) minmax(0,.9fr) auto;gap:10px;align-items:end;padding:12px 0;border-top:1px solid var(--line)}
 @media(max-width:560px){.rollrow{grid-template-columns:1fr 1fr}.rollrow>.btn{justify-self:end}}
 .agchk{width:20px;height:20px;accent-color:var(--accent)}
 .chips{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -369,7 +382,7 @@ const GROUPS=[
   {id:'bag',label:'Bag Making',items:['bag','spout']}
 ];
 const PROC={
-  printing:{label:'Printing',code:'PRT',group:'printing',
+  printing:{label:'Printing',code:'PRT',group:'printing',kind:'log',unit:'m',noDus:true,dusCount:true,rangeWarna:true,noSize:true,machines:['SAM1','SAM2','SAM3','FUJI1','FUJI2'],
     measures:[
       {k:'visk',label:'Viskositas tinta',unit:'dtk',min:18,max:25},
       {k:'suhu',label:'Suhu dryer',unit:'°C',min:50,max:80},
@@ -463,9 +476,9 @@ const chip=(c,t)=>'<span class="chip '+c+'"><i></i>'+esc(t)+'</span>';
 const dispChip=d=>{const x=DISP[d]||DISP.hold;return chip(x.c,x.t)};
 
 /* ================= STATE & STORAGE ================= */
-const S={mode:'init',sf:{q:'',st:'open'},ag:{q:'',st:'due',view:'jadwal'},agPick:[],agingSel:[],dm:null,drafts:[],activeDraft:null,domDraft:null,confirmDraft:null,users:[],reports:[],memos:[],memoReads:[],memoId:null,tf:{q:'',proc:'all',st:'all',range:'30'},usersLoaded:false,meId:null,view:'dash',formProc:null,dispTouched:false,
+const S={mode:'init',sf:{q:'',st:'open'},ag:{q:'',st:'due',view:'jadwal'},agPick:[],agingSel:[],dm:null,drafts:[],activeDraft:null,domDraft:null,confirmDraft:null,users:[],reports:[],memos:[],memoReads:[],memoId:null,tf:{q:'',proc:'all',st:'all',range:'all'},usersLoaded:false,meId:null,view:'dash',formProc:null,dispTouched:false,
   detailId:null,confirmDel:null,confirmSdel:null,modal:null,userEdit:null,dbError:false,canDownload:false,
-  filters:{q:'',proc:'all',disp:'all',range:'7'}};
+  filters:{q:'',proc:'all',disp:'all',range:(()=>{const n=new Date();return 'm:'+n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')})()}};
 let dbh=null,dlh=null;
 const LS={
   get(k){try{return localStorage.getItem(k)}catch(e){return null}},
@@ -602,9 +615,12 @@ const procsText=u=>u.role==='viewer'?'Semua proses, hanya melihat':u.role!=='ope
 const roleNote=r=>r==='admin'?'Koordinator / Admin: akses semua proses, tindakan tolakan, memorandum, dan kelola akun.':r==='viewer'?'Hanya Melihat: hanya bisa membuka menu Laporan In-Line untuk membaca laporan semua proses. Tidak bisa membuat, mengubah, atau memberi tindakan.':(ROLES[r]&&ROLES[r].r>=2?ROLES[r].t+': akses semua proses, memberi tindakan tolakan, dan membuat memorandum untuk operator. Hak akses sama untuk QC Ass SPV, QC SPV, QC AM, dan QC M.':'');
 function allowedProcs(){const m=getMe();if(!m)return[];return (rankOf(m)>=2||m.role==='viewer')?IDS.slice():(m.procs||[]).filter(p=>PROC[p])}
 /* tolakan = laporan dengan produk Not Pass / di luar spesifikasi */
-function isTolakan(r){if(r.vid)return true;const P=PROC[r.proc];if(!P)return false;if(P.aging)return false;if(P.kind==='log')return (r.qn>0)||r.kts==='ada';return r.auto==='ng'||r.disp!=='lulus'}
-const ACT_GROUPS=['bag','slitting'];
-const canAct=r=>!!r.vid||(!!PROC[r.proc]&&ACT_GROUPS.includes(PROC[r.proc].group));
+function isTolakan(r){if(r.vid)return true;const P=PROC[r.proc];if(!P)return false;if(P.aging)return false;if(logOf(r))return (r.qn>0)||r.kts==='ada';return r.auto==='ng'||r.disp!=='lulus'}
+const ACT_GROUPS=['bag','slitting','printing'],SORT_GROUPS=['bag','slitting'];
+const legacyP=r=>r.proc==='printing'&&r.qp==null;
+const logOf=r=>{const P=PROC[r.proc];return !!P&&P.kind==='log'&&!legacyP(r)};
+const inSort=r=>!!PROC[r.proc]&&SORT_GROUPS.includes(PROC[r.proc].group);
+const canAct=r=>!!r.vid||(!!PROC[r.proc]&&ACT_GROUPS.includes(PROC[r.proc].group)&&!legacyP(r));
 const unitOf=r=>{const P=PROC[r&&r.proc];return (r&&r.unit)||(P&&P.unit)||'pcs'};
 const plabel=(r,P)=>(r&&r.vid?'Dry Laminasi · Roll '+r.no:'')||(r&&r.sub)||((P||PROC[r&&r.proc]||{}).label)||(r&&r.proc)||'';
 function sumUnits(rs,fn){const m={};rs.forEach(r=>{const u=unitOf(r);m[u]=(m[u]||0)+(fn(r)||0)});const k=Object.keys(m).filter(u=>m[u]);return k.length?k.map(u=>fmtInt(m[u])+' '+u).join(' · '):'0'}
@@ -632,19 +648,20 @@ async function putItemDoc(doc){
   const rolls=(rep.rolls||[]).map(k=>{if(k.id!==doc.roll.id)return k;const n=Object.assign({},k);F.forEach(x=>{if(doc[x]===undefined||doc[x]===null||doc[x]==='')delete n[x];else n[x]=doc[x]});return n});
   return safe(()=>put('reports',Object.assign({},rep,{rolls})));
 }
-const planOut=r=>{const t=new Date(r.agingIn).getTime();return isNaN(t)?null:new Date(t+(r.agingDays||0)*86400000)};
+const rollIn=(r,k)=>{const t=new Date((k&&k.in)||r.agingIn);return isNaN(t.getTime())?null:t};
+const planOutK=(r,k)=>{const t=rollIn(r,k);return t?new Date(t.getTime()+(r.agingDays||0)*86400000):null};
 const fmtD=d=>d.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
 const fmtDT=d=>d?fmtD(d)+' '+pad(d.getHours())+':'+pad(d.getMinutes()):'—';
 function agingItems(){
   const out=[],now=Date.now();
   visibleReports().forEach(r=>{
     if(!(PROC[r.proc]&&PROC[r.proc].aging))return;
-    (r.rolls||[]).forEach(k=>{const po=planOut(r);out.push({key:r.id+'|'+k.id,r,k,po,st:k.check?'done':(po&&po.getTime()<=now?'due':'wait')})});
+    (r.rolls||[]).forEach(k=>{const po=planOutK(r,k);out.push({key:r.id+'|'+k.id,r,k,po,st:k.check?'done':(po&&po.getTime()<=now?'due':'wait')})});
   });
   return out;
 }
 const showAging=()=>{const me=getMe();return !!me&&me.role!=='viewer'&&(isSpv()||allowedProcs().includes('lam_dry'))};
-const rollsText=r=>(r.rolls||[]).map(k=>k.no+' ('+fmtInt(k.m)+' m, '+(AG_ST[k.s]||AG_ST.pass).t+')').join('; ');
+const rollsText=r=>(r.rolls||[]).map(k=>k.no+' ('+fmtInt(k.m)+' m, '+(AG_ST[k.s]||AG_ST.pass).t+', masuk '+fmtDT(rollIn(r,k))+')').join('; ');
 const noteSeenId=(r,uid)=>'note_'+r.id+'_'+uid;
 function noteUnread(r,uid){
   const n=r.qcNote;if(!n||!n.text||r.operatorId!==uid)return false;
@@ -652,11 +669,11 @@ function noteUnread(r,uid){
   return !d||String(d.at)<String(n.at);
 }
 function unreadNotes(){const me=getMe();return me&&rankOf(me)===1?visibleReports().filter(r=>noteUnread(r,me.id)):[]}
-const sortirList=()=>visibleReports().filter(r=>!r.vid&&canAct(r)&&isTolakan(r)&&r.tindakan==='sortir');
-const showSortir=()=>{const me=getMe();return !!me&&me.role!=='viewer'&&(isSpv()||allowedProcs().some(x=>PROC[x]&&ACT_GROUPS.includes(PROC[x].group)))};
-const canSortir=r=>{const me=getMe();if(!me||me.role==='viewer'||!isSortirT(r.tindakan))return false;return r.vid?false:(canAct(r)&&allowedProcs().includes(r.proc)&&r.tindakan==='sortir')};
+const sortirList=()=>visibleReports().filter(r=>!r.vid&&inSort(r)&&isTolakan(r)&&r.tindakan==='sortir');
+const showSortir=()=>{const me=getMe();return !!me&&me.role!=='viewer'&&(isSpv()||allowedProcs().some(x=>PROC[x]&&SORT_GROUPS.includes(PROC[x].group)))};
+const canSortir=r=>{const me=getMe();if(!me||me.role==='viewer'||!isSortirT(r.tindakan))return false;return r.vid?false:(inSort(r)&&allowedProcs().includes(r.proc)&&r.tindakan==='sortir')};
 const waitList=()=>tolakanItems().filter(r=>isTolakan(r)&&canAct(r)&&!r.tindakan);
-function causeOf(r){if(r.vid)return r.defect||'—';const P=PROC[r.proc];if(!P)return '—';if(P.kind==='log')return r.defect||'—';return evalData(P,{vals:r.vals||{},targets:r.targets||{},checks:r.checks||{}}).bad.join(', ')||'—'}
+function causeOf(r){if(r.vid)return r.defect||'—';const P=PROC[r.proc];if(!P)return '—';if(logOf(r))return r.defect||'—';return evalData(P,{vals:r.vals||{},targets:r.targets||{},checks:r.checks||{}}).bad.join(', ')||'—'}
 const PRIO={biasa:{t:'Biasa',c:'mute'},penting:{t:'Penting',c:'hold'}};
 const isRead=(m,uid)=>S.memoReads.some(x=>x.memoId===m.id&&x.userId===uid);
 const memoVisible=m=>{const me=getMe();return !!me&&(isSpv()||(m.toIds||[]).includes(me.id))};
@@ -830,7 +847,7 @@ function viewHTML(me){
 function greet(){const h=new Date().getHours();return h>=4&&h<11?'Selamat pagi':h<15?'Selamat siang':h<18?'Selamat sore':'Selamat malam'}
 function procBtn(p){
   const P=PROC[p];
-  return '<button class="start g-'+P.group+'" data-act="newform" data-p="'+p+'"><span class="pdot"></span><span><b>'+esc(P.label)+'</b><small>'+(P.kind==='log'?'PR, kuantitas, dan KTS':P.measures.length+' pengukuran · '+P.checks.length+' pengecekan')+'</small></span>'+ic('arrow')+'</button>';
+  return '<button class="start g-'+P.group+'" data-act="newform" data-p="'+p+'"><span class="pdot"></span><span><b>'+esc(P.label)+'</b><small>'+(P.kind==='log'?(P.dusCount?'PR, kuantiti (m), KTS, range warna':'PR, kuantitas, dan KTS'):P.measures.length+' pengukuran · '+P.checks.length+' pengecekan')+'</small></span>'+ic('arrow')+'</button>';
 }
 function groupsHTML(allowed){
   let h='';
@@ -1021,7 +1038,7 @@ function resumeHTML(){
    Setiap perubahan butuh alasan dan dicatat di r.edits (siapa, kapan, alasan, nilai lama dan baru). */
 function canEditReport(r){
   const me=getMe();
-  if(!me||!PROC[r.proc]||!allowedProcs().includes(r.proc))return false;
+  if(!me||!PROC[r.proc]||!allowedProcs().includes(r.proc)||legacyP(r))return false;
   if(me.role==='viewer')return false;
   if(isSpv())return true;
   return r.operatorId===me.id;
@@ -1040,10 +1057,10 @@ function statusChip(r){
   }
   if(r.vid&&!r.tindakan)return chip('ng','Not Pass');
   const t=r.tindakan&&TINDAKAN[r.tindakan];
-  const ngc=(P0&&P0.kind==='log'&&r.qn>0&&!r.vid)?chip('ng',fmtInt(r.qn)+' '+unitOf(r)+' NG'):'';
+  const ngc=(logOf(r)&&r.qn>0&&!r.vid)?chip('ng',fmtInt(r.qn)+' '+unitOf(r)+' NG'):'';
   if(r.tindakan==='diterima'&&!r.vid)return chip('ok','QC Passed');
   if(t){
-    if(isSortirT(r.tindakan)&&!r.vid){const x=sortSt(r);if(x==='selesai')return ngc+chip('ok','Sortir selesai');if(x==='proses')return ngc+chip('hold','Sortir berjalan')}
+    if(isSortirT(r.tindakan)&&!r.vid&&inSort(r)){const x=sortSt(r);if(x==='selesai')return ngc+chip('ok','Sortir selesai');if(x==='proses')return ngc+chip('hold','Sortir berjalan')}
     return ngc+chip(t.c,t.t);
   }
   return ngc||(r.disp==='lulus'?chip('ok','QC Passed'):dispChip(r.disp));
@@ -1064,12 +1081,13 @@ function reportToFormData(r){
   if(P.kind==='log'){
     Object.assign(d,{date:ymd(new Date(r.createdAt)),shift:r.shift||'1',wo:r.wo||'',product:r.product||'',customer:r.customer||'',size:r.size||'',sub:r.sub||'',machine:r.machine||'',op:r.op||'',dusOk:r.dusOk||'',dusNg:r.dusNg||'',qp:r.qp==null?'':String(r.qp),qn:r.qn==null?'':String(r.qn),kts:r.kts||'tidak',defect:r.defect||''});
     if(r.cond)d.cond=r.cond;
+    if(r.rangeWarna)d.rw=r.rangeWarna;
   }else{
     Object.assign(d,{shift:r.shift||'1',wo:r.wo||'',product:r.product||'',customer:r.customer||'',machine:r.machine||'',batch:r.batch||'',disp:r.disp||'lulus',note:r.note||'',insp:r.inspector||r.operatorName||'',kts:r.kts||'tidak',defect:r.defect||''});
     if(P.aging){
       const ai=new Date(r.agingIn);
-      Object.assign(d,{komposisi:r.komposisi||'',agingDays:String(r.agingDays||''),agingDate:isNaN(ai)?'':ymd(ai),agingTime:isNaN(ai)?'':pad(ai.getHours())+':'+pad(ai.getMinutes())});
-      (r.rolls||[]).forEach((k,i)=>{d['ri_'+i]=k.id;d['rn_'+i]=k.no;d['rm_'+i]=String(k.m);d['rs_'+i]=agS(k.s)});
+      Object.assign(d,{komposisi:r.komposisi||'',agingDays:String(r.agingDays||'')});
+      (r.rolls||[]).forEach((k,i)=>{d['ri_'+i]=k.id;d['rn_'+i]=k.no;d['rm_'+i]=String(k.m);d['rs_'+i]=agS(k.s);const ki=rollIn(r,k);if(ki){d['rd_'+i]=ymd(ki);d['rt_'+i]=pad(ki.getHours())+':'+pad(ki.getMinutes())}});
     }
     P.measures.forEach(m=>{
       if(r.vals&&r.vals[m.k]!=null)d['m_'+m.k]=ns(r.vals[m.k]);
@@ -1088,14 +1106,16 @@ function diffReport(P,a,b){
     add('Tanggal',ymd(new Date(a.createdAt)),ymd(new Date(b.createdAt)));
     [['shift','Shift'],['wo','No. PR'],['product','Nama produk'],['customer','Customer'],['sub','Jenis rewind'],['size',P.sizeLabel?'Ukuran potong':'Ukuran kantong'],['machine','Nama mesin'],['op','OP mesin']].forEach(x=>add(x[1],a[x[0]],b[x[0]]));
     add('Kondisi mesin',cond(a.cond),cond(b.cond));
-    add('No. dus sudah diproses',a.dusOk,b.dusOk);add('No. dus QC Not Pass',a.dusNg,b.dusNg);
+    if(P.rangeWarna)add('Range warna',a.rangeWarna==='ada'?'Ada':a.rangeWarna==='tidak'?'Tidak ada':'',b.rangeWarna==='ada'?'Ada':b.rangeWarna==='tidak'?'Tidak ada':'');
+
+    add('No. dus sudah diproses',a.dusOk,b.dusOk);add(P.dusCount?'No. jumbo terjadi defect':'No. dus QC Not Pass',a.dusNg,b.dusNg);
     add('QC Pass ('+(P.unit||'pcs')+')',a.qp,b.qp);add('QC Not Pass ('+(P.unit||'pcs')+')',a.qn,b.qn);
     add('KTS',a.kts==='ada'?'Ada':'Tidak ada',b.kts==='ada'?'Ada':'Tidak ada');
     add('Keterangan defect',a.defect,b.defect);
   }else{
     [['shift','Shift'],['wo','No. PR'],['product','Produk'],['customer','Customer'],['machine','Mesin'],['batch','No. batch / roll']].filter(x=>!P.dry||!/machine|batch/.test(x[0])).forEach(x=>add(x[1],a[x[0]],b[x[0]]));
     if(P.dry){add('QC Lami Inspector',a.inspector,b.inspector);add('KTS',a.kts==='ada'?'Ada':'Tidak ada',b.kts==='ada'?'Ada':'Tidak ada');add('Keterangan KTS',a.defect,b.defect)}
-    if(P.aging){add('Komposisi',a.komposisi,b.komposisi);add('Durasi aging (hari)',a.agingDays,b.agingDays);add('Masuk aging',a.agingIn?fmtDT(new Date(a.agingIn)):'',b.agingIn?fmtDT(new Date(b.agingIn)):'');add('Roll',rollsText(a),rollsText(b))}
+    if(P.aging){add('Komposisi',a.komposisi,b.komposisi);add('Durasi aging (hari)',a.agingDays,b.agingDays);add('Roll',rollsText(a),rollsText(b))}
     P.measures.forEach(m=>{
       add(m.label+(m.unit?' ('+m.unit+')':''),(a.vals||{})[m.k],(b.vals||{})[m.k]);
       if(m.target)add('Target '+m.label,(a.targets||{})[m.k],(b.targets||{})[m.k]);
@@ -1116,7 +1136,7 @@ async function commitEdit(dr,doc,f,did){
   const reason=f.elements['reason']?f.elements['reason'].value.trim():'';
   if(!reason)return fail('Isi alasan perubahan.');
   const P=PROC[latest.proc],log=P.kind==='log',next=Object.assign({},latest);
-  const keys=log?['shift','wo','product','customer','machine','size','sub','op','cond','dusOk','dusNg','qp','qn','kts','defect']:(P.dry?['shift','wo','product','customer','note','inspector','kts','defect']:['shift','wo','product','customer','machine','batch','vals','targets','checks','note']);
+  const keys=log?['shift','wo','product','customer','machine','size','sub','op','cond','dusOk','dusNg','rangeWarna','qp','qn','kts','defect']:(P.dry?['shift','wo','product','customer','note','inspector','kts','defect']:['shift','wo','product','customer','machine','batch','vals','targets','checks','note']);
   keys.forEach(k=>{next[k]=doc[k]});
   if(P.aging){['komposisi','agingDays','agingIn'].forEach(k=>{next[k]=doc[k]});next.rolls=(doc.rolls||[]).map(rr=>{const o=(latest.rolls||[]).find(x=>x.id===rr.id);if(!o)return rr;const kp={};['check','tindakan','tindakanNote','tindakanBy','sortir','sortirLog'].forEach(x=>{if(o[x]!==undefined)kp[x]=o[x]});return Object.assign({},rr,kp)})}
   next.auto=doc.auto;
@@ -1194,15 +1214,20 @@ function formHTML(pid,me){
    '</form>';
 }
 function updatePlan(f){
-  const E=n=>f.elements[n],days=toInt(E('agingDays').value),dt=E('agingDate').value,tm=E('agingTime').value;
-  const o=$('#planOutTxt'),ok=!isNaN(days)&&dt&&tm;
-  if(o)o.textContent=ok?fmtDT(new Date(new Date(dt+'T'+tm+':00').getTime()+days*86400000)):'—';
-  let n=0,ng=0,bl=0,i=0;while(E('rn_'+i)){if(E('rn_'+i).value.trim()){n++;const v=E('rs_'+i).value;if(v==='ng')ng++;if(v==='biru')bl++}i++}
+  const E=n=>f.elements[n],days=toInt(E('agingDays').value);
+  let n=0,ng=0,bl=0,i=0,first=null;
+  while(E('rn_'+i)){
+    const dt=E('rd_'+i).value,tm=E('rt_'+i).value,o=$('#rpo_'+i);
+    let po=null;if(!isNaN(days)&&dt&&tm)po=new Date(new Date(dt+'T'+tm+':00').getTime()+days*86400000);
+    if(o)o.textContent=po?'Plan keluar aging: '+fmtDT(po):'';
+    if(E('rn_'+i).value.trim()){n++;const v=E('rs_'+i).value;if(v==='ng')ng++;if(v==='biru')bl++;if(po&&(!first||po<first))first=po}
+    i++;
+  }
   const ck=f.querySelector('input[name="kts"]:checked'),dr=$('#defectReq');if(dr)dr.textContent=ck&&ck.value==='ada'?'(wajib diisi)':'';
   const a=$('#autoRes');if(a){a.style.color=ng?'var(--ng)':'';a.textContent=n+' roll'+(ng?' · '+ng+' Not Pass':'')+(bl?' · '+bl+' Label Biru':'')}
-  const pg=$('#prog');if(pg)pg.textContent=ok&&o?'Keluar aging '+o.textContent:'';
+  const pg=$('#prog');if(pg)pg.textContent=first?'Roll pertama keluar aging '+fmtDT(first):'';
 }
-function rollCount(d){let n=1;Object.keys((d&&d.data)||{}).forEach(k=>{const m=/^r[nmsi]_(\d+)$/.exec(k);if(m)n=Math.max(n,+m[1]+1)});return Math.max(n,(d&&d.rollN)||1)}
+function rollCount(d){let n=1;Object.keys((d&&d.data)||{}).forEach(k=>{const m=/^r[nmsidt]_(\d+)$/.exec(k);if(m)n=Math.max(n,+m[1]+1)});return Math.max(n,(d&&d.rollN)||1)}
 function agingFormHTML(){
   const d=curDraft(),n=rollCount(d),now=new Date();
   const past=S.reports.filter(r=>r.komposisi).map(r=>r.komposisi);
@@ -1212,24 +1237,23 @@ function agingFormHTML(){
       '<div class="fld"><label for="f_rn_'+i+'">No. Roll</label><input class="in mono" id="f_rn_'+i+'" name="rn_'+i+'" autocomplete="off" placeholder="01.01"></div>'+
       '<div class="fld"><label for="f_rm_'+i+'">Kuantiti (m)</label><input class="in mono" id="f_rm_'+i+'" name="rm_'+i+'" inputmode="numeric" autocomplete="off" placeholder="0"></div>'+
       '<div class="fld"><label for="f_rs_'+i+'">Status QC Lami</label><select class="in" id="f_rs_'+i+'" name="rs_'+i+'"><option value="pass">QC Passed</option><option value="biru">Label Biru</option><option value="ng">QC Not Pass</option></select></div>'+
-      '<button type="button" class="btn sm ghost" data-act="delroll" data-i="'+i+'" aria-label="Hapus roll '+(i+1)+'">'+ic('x')+'</button></div>';
+      '<div class="fld"><label for="f_rd_'+i+'">Masuk aging: tanggal</label><input class="in" type="date" id="f_rd_'+i+'" name="rd_'+i+'" value="'+ymd(now)+'"></div>'+
+      '<div class="fld"><label for="f_rt_'+i+'">Pukul</label><input class="in" type="time" id="f_rt_'+i+'" name="rt_'+i+'" value="'+pad(now.getHours())+':'+pad(now.getMinutes())+'"></div>'+
+      '<button type="button" class="btn sm ghost" data-act="delroll" data-i="'+i+'" aria-label="Hapus roll '+(i+1)+'">'+ic('x')+'</button>'+
+      '<div class="rollpo mono faint" id="rpo_'+i+'" style="grid-column:1/-1;font-size:13px" aria-live="polite"></div></div>';
   }
-  return '<section class="panel pad"><div class="sechead"><h2>Aging dan roll</h2><span class="muted" style="font-size:13px">Roll akan muncul di Monitoring Aging setelah durasi selesai</span></div>'+
+  return '<section class="panel pad"><div class="sechead"><h2>Aging dan roll</h2><span class="muted" style="font-size:13px">Tiap roll muncul di Monitoring Aging setelah durasinya selesai</span></div>'+
     '<div class="fgrid">'+
      '<div class="fld"><label for="f_komposisi">Komposisi</label><input class="in" id="f_komposisi" name="komposisi" autocomplete="off" list="dl_komposisi" placeholder="NYLON+AL+LLDPE"></div>'+
      '<div class="fld"><label for="f_agingDays">Durasi aging (hari) <span class="req">*</span></label><input class="in mono" id="f_agingDays" name="agingDays" inputmode="numeric" autocomplete="off" value="3"></div>'+
-     '<div class="fld"><label for="f_agingDate">Actual in aging: tanggal <span class="req">*</span></label><input class="in" type="date" id="f_agingDate" name="agingDate" value="'+ymd(now)+'"></div>'+
-     '<div class="fld"><label for="f_agingTime">Actual in aging: pukul <span class="req">*</span></label><input class="in" type="time" id="f_agingTime" name="agingTime" value="'+pad(now.getHours())+':'+pad(now.getMinutes())+'"></div>'+
-     '<div class="fld"><span class="lbl">Plan out aging (otomatis)</span><div class="in mono" id="planOutTxt" style="display:flex;align-items:center;border-style:dashed;background:transparent" aria-live="polite">—</div></div>'+
     '</div>'+dlist('dl_komposisi',past)+
-    '<h3 style="margin:18px 0 4px">Daftar roll</h3><p class="muted" style="font-size:13px;margin-bottom:6px">Satu laporan boleh berisi banyak roll. Pengecekan aging nanti dilakukan per roll.</p>'+
+    '<h3 style="margin:18px 0 4px">Daftar roll</h3><p class="muted" style="font-size:13px;margin-bottom:6px">Satu laporan boleh berisi banyak roll. Waktu masuk aging diisi per roll (boleh berbeda-beda) dan plan keluar dihitung otomatis dari durasi aging.</p>'+
     rows+'<div style="margin-top:12px"><button type="button" class="btn" data-act="addroll">'+ic('plus')+'Tambah roll</button></div></section>';
 }
 function readAging(f){
   const errs=[],E=n=>f.elements[n];
-  const days=toInt(E('agingDays').value),dt=E('agingDate').value,tm=E('agingTime').value;
+  const days=toInt(E('agingDays').value);
   if(isNaN(days)||days<=0)errs.push('Isi durasi aging (hari).');
-  if(!dt||!tm)errs.push('Isi tanggal dan pukul masuk aging.');
   const rolls=[],seen={};let i=0;
   while(E('rn_'+i)){
     const no=E('rn_'+i).value.trim(),mraw=E('rm_'+i).value,m=toInt(mraw);
@@ -1238,12 +1262,14 @@ function readAging(f){
       else if(seen[no.toLowerCase()])errs.push('No. Roll '+no+' dobel.');
       if(isNaN(m))errs.push('Roll '+(no||('baris '+(i+1)))+': isi kuantitas (m).');
       seen[no.toLowerCase()]=1;
-      rolls.push({id:E('ri_'+i).value||('k'+Date.now().toString(36)+i),no,m:isNaN(m)?0:m,s:agS(E('rs_'+i).value)});
+      const dt=E('rd_'+i).value,tm=E('rt_'+i).value;
+      if(!dt||!tm)errs.push('Roll '+(no||('baris '+(i+1)))+': isi tanggal dan pukul masuk aging.');
+      rolls.push({id:E('ri_'+i).value||('k'+Date.now().toString(36)+i),no,m:isNaN(m)?0:m,s:agS(E('rs_'+i).value),in:dt&&tm?new Date(dt+'T'+tm+':00').toISOString():''});
     }
     i++;
   }
   if(!rolls.length)errs.push('Isi minimal satu roll.');
-  const agingIn=dt&&tm?new Date(dt+'T'+tm+':00').toISOString():'';
+  const ins=rolls.map(k=>k.in).filter(Boolean).sort(),agingIn=ins[0]||'';
   return {errs,komposisi:E('komposisi').value.trim(),agingDays:isNaN(days)?0:days,agingIn,rolls};
 }
 function readForm(f,P){
@@ -1340,7 +1366,8 @@ function logFormHTML(pid,me){
       '<div class="fld"><label for="f_product">Nama produk <span class="req">*</span></label><input class="in" id="f_product" name="product" autocomplete="off" list="dl_product"></div>'+
       '<div class="fld"><label for="f_customer">Customer</label><input class="in" id="f_customer" name="customer" autocomplete="off" list="dl_customer"></div>'+
       (P.sub?'<div class="fld"><label for="f_sub">Jenis rewind <span class="req">*</span></label><select class="in" id="f_sub" name="sub"><option value="">Pilih jenis</option>'+P.sub.map(v=>'<option value="'+esc(v)+'">'+esc(v)+'</option>').join('')+'</select></div>':'')+
-      '<div class="fld"><label for="f_size">'+esc(P.sizeLabel||'Ukuran kantong (lebar x tinggi, mm)')+'</label><input class="in" id="f_size" name="size" autocomplete="off" list="dl_size" placeholder="'+esc(P.sizePh||'140 x 210 (Doypack) mm')+'"></div>'+
+      (P.noSize?'':'<div class="fld"><label for="f_size">'+esc(P.sizeLabel||'Ukuran kantong (lebar x tinggi, mm)')+'</label><input class="in" id="f_size" name="size" autocomplete="off" list="dl_size" placeholder="'+esc(P.sizePh||'140 x 210 (Doypack) mm')+'"></div>')+
+      (P.rangeWarna?'<div class="fld"><span class="lbl" id="lbl_rw">Range warna <span class="req">*</span></span>'+segTwo('rw',[['ada','Ada','ok'],['tidak','Tidak ada','na']])+'</div>':'')+
      '</div></section>'+
     '<section class="panel pad"><div class="sechead"><h2>Mesin</h2></div>'+
      '<div class="fgrid">'+
@@ -1350,16 +1377,17 @@ function logFormHTML(pid,me){
      '</div></section>'+
     '<section class="panel pad"><div class="sechead"><h2>'+(P.noDus?'Kuantitas':'Dus dan kuantitas')+'</h2><span class="muted" style="font-size:13px">Dalam '+un+'</span></div>'+
      (P.noDus?'':'<div class="fgrid">'+
-      '<div class="fld"><label for="f_dusok">No. dus sudah diproses</label><textarea class="in mono" id="f_dusok" name="dusOk" style="min-height:64px" placeholder="071026A9B9 - 071026A15B15"></textarea></div>'+
-      '<div class="fld"><label for="f_dusng">No. dus QC Not Pass</label><textarea class="in mono" id="f_dusng" name="dusNg" style="min-height:64px"></textarea></div>'+
+      (P.dusCount?'<div class="fld"><label for="f_dusn">Jumlah dus sudah diproses</label><input class="in mono" id="f_dusn" name="dusN" inputmode="numeric" autocomplete="off" placeholder="0"></div>':'<div class="fld"><label for="f_dusok">No. dus sudah diproses</label><textarea class="in mono" id="f_dusok" name="dusOk" style="min-height:64px" placeholder="071026A9B9 - 071026A15B15"></textarea></div>')+
+      '<div class="fld"><label for="f_dusng">'+(P.dusCount?'No. dus terjadi defect':'No. dus QC Not Pass')+'</label><textarea class="in mono" id="f_dusng" name="dusNg" style="min-height:64px"></textarea></div>'+
      '</div>')+
      '<div class="fgrid"'+(P.noDus?'':' style="margin-top:14px"')+'>'+
-      '<div class="fld"><label for="f_qp">QC Pass <span class="req">*</span></label><input class="in mono" id="f_qp" name="qp" inputmode="numeric" autocomplete="off" placeholder="0"></div>'+
-      '<div class="fld"><label for="f_qn">QC Not Pass <span class="req">*</span></label><input class="in mono" id="f_qn" name="qn" inputmode="numeric" autocomplete="off" placeholder="0"></div>'+
-      '<div class="fld"><span class="lbl">Total</span><div class="totalbox" id="totalBox">—</div></div>'+
+      '<div class="fld"><label for="f_qp">'+(P.dusCount?'Kuantiti QC Pass ('+un+')':'QC Pass')+' <span class="req">*</span></label><input class="in mono" id="f_qp" name="qp" inputmode="numeric" autocomplete="off" placeholder="0"></div>'+
+      '<div class="fld"><label for="f_qn">'+(P.dusCount?'Kuantiti KTS / Not Pass ('+un+')':'QC Not Pass')+' <span class="req">*</span></label><input class="in mono" id="f_qn" name="qn" inputmode="numeric" autocomplete="off" placeholder="0"></div>'+
+      '<div class="fld"><span class="lbl">'+(P.dusCount?'Kuantiti sudah proses ('+un+')':'Total')+'</span><div class="totalbox" id="totalBox">—</div></div>'+
      '</div></section>'+
     '<section class="panel pad"><div class="sechead"><h2>Ketidaksesuaian (KTS)</h2></div>'+
      '<div class="fgrid"><div class="fld"><span class="lbl" id="lbl_kts">KTS</span>'+segTwo('kts',[['tidak','Tidak ada','ok',true],['ada','Ada','ng']])+'</div></div>'+
+     (P.dusCount?'<div class="fld" id="jumboBox" style="margin-top:14px;display:none"><label for="f_dusng">No. jumbo terjadi defect</label><textarea class="in mono" id="f_dusng" name="dusNg" style="min-height:64px" placeholder="Diisi jika ada KTS"></textarea></div>':'')+
      '<div class="fld" style="margin-top:14px"><label for="f_defect">Keterangan defect / lain-lain <span class="faint" id="defectReq" style="font-weight:400"></span></label><textarea class="in" id="f_defect" name="defect" placeholder="Contoh: foil keriput, cetakan kering"></textarea></div>'+
      '<p class="muted" style="font-size:14px;margin-top:12px">Tindakan (Diterima, Sortir, atau Dimusnahkan) untuk produk label biru atau merah diisi QC Ass SPV ke atas setelah laporan disimpan.</p>'+
     '</section>'+
@@ -1377,6 +1405,7 @@ function updateLog(f,P){
   if(!S.ktsTouched&&!isNaN(qn)){const el=f.querySelector('input[name="kts"][value="'+(qn>0?'ada':'tidak')+'"]');if(el)el.checked=true}
   const ck=f.querySelector('input[name="kts"]:checked');
   $('#defectReq').textContent=ck&&ck.value==='ada'?'(wajib diisi)':'';
+  const jb=$('#jumboBox');if(jb)jb.style.display=(ck&&ck.value==='ada')?'':'none';
   const res=$('#autoRes'),prog=$('#prog');
   if(isNaN(qp)||isNaN(qn)){res.textContent='Belum lengkap';res.style.color='';prog.textContent='Isi QC Pass dan QC Not Pass (boleh 0)'}
   else if(qn>0){res.textContent=fmtInt(qn)+' '+un+' QC Not Pass';res.style.color='var(--ng)';prog.textContent='Total '+fmtInt(tot)+' '+un+' · status Hold sampai SPV memberi tindakan'}
@@ -1396,6 +1425,8 @@ async function submitLog(f,P){
   if(P.sub&&!E('sub').value)errs.push('Pilih jenis rewind.');
   if(!machine)errs.push('Isi nama mesin.');
   if(!cond)errs.push('Pilih kondisi mesin.');
+  const rw=P.rangeWarna?((f.querySelector('input[name="rw"]:checked')||{}).value||''):'';
+  if(P.rangeWarna&&!rw)errs.push('Pilih range warna (Ada atau Tidak ada).');
   if(isNaN(qp)||isNaN(qn))errs.push('Isi QC Pass dan QC Not Pass (isi 0 jika tidak ada).');
   if(kts==='ada'&&!defect)errs.push('Isi keterangan defect untuk KTS.');
   if(errs.length){const box=$('#formErr');box.textContent=errs.join(' ');box.hidden=false;box.scrollIntoView({block:'center',behavior:'smooth'});return}
@@ -1405,8 +1436,8 @@ async function submitLog(f,P){
   const yy=String(when.getFullYear()).slice(2)+pad(when.getMonth()+1)+pad(when.getDate());
   const ng=qn>0||kts==='ada';
   const doc={id,no:P.code+'-'+yy+'-'+pad(now.getHours())+pad(now.getMinutes())+pad(now.getSeconds()),proc:pid,createdAt:when.toISOString(),
-    shift:E('shift').value,wo,product,customer:E('customer').value.trim(),machine,batch:'',size:E('size').value.trim(),op:E('op').value.trim(),cond,
-    sub:P.sub?E('sub').value:'',dusOk:E('dusOk')?E('dusOk').value.trim():'',dusNg:E('dusNg')?E('dusNg').value.trim():'',qp,qn,kts,defect,tindakan:'',tindakanNote:'',
+    shift:E('shift').value,wo,product,customer:E('customer').value.trim(),machine,batch:'',size:E('size')?E('size').value.trim():'',rangeWarna:rw,op:E('op').value.trim(),cond,
+    sub:P.sub?E('sub').value:'',dusOk:E('dusOk')?E('dusOk').value.trim():'',dusNg:E('dusNg')&&(!P.dusCount||kts==='ada')?E('dusNg').value.trim():'',qp,qn,kts,defect,tindakan:'',tindakanNote:'',
     operatorId:me.id,operatorName:me.name,vals:{},targets:{},checks:{},note:'',auto:ng?'ng':'ok',disp:ng?'hold':'lulus',verified:null};
   const dr0=S.drafts.find(x=>x.id===did);
   if(dr0&&dr0.editId)return commitEdit(dr0,doc,f,did);
@@ -1417,13 +1448,7 @@ async function submitLog(f,P){
 }
 function detailLogHTML(r){
   const me=getMe(),P=PROC[r.proc];
-  const tn=r.tindakan?TINDAKAN[r.tindakan]:null;
-  const tview=tn?chip(tn.c,tn.t)+(r.tindakanNote?'<p style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.tindakanNote)+'</p>':'')+(r.tindakanBy?'<div class="faint" style="font-size:13px;margin-top:6px">'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</div>':''):'<span class="faint">Belum ditentukan</span>';
-  const tform=isSpv()?'<form data-form="tindakan" data-id="'+r.id+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px" novalidate>'+
-    '<div class="fld"><label for="t_sel">Tindakan</label><select class="in" id="t_sel" name="tindakan"><option value="">Belum ditentukan</option>'+tOpts(r).map(k=>'<option value="'+k+'"'+(r.tindakan===k?' selected':'')+'>'+TINDAKAN[k].t+'</option>').join('')+'</select></div>'+
-    '<div class="fld"><label for="t_note">Keterangan</label><textarea class="in" id="t_note" name="tnote">'+esc(r.tindakanNote||'')+'</textarea></div>'+
-    '<div><button class="btn" type="submit">Simpan tindakan</button></div></form>':'';
-  const tsec=(r.qn>0||r.kts==='ada'||r.tindakan)?'<section class="panel pad"><h3 style="margin-bottom:2px">Tindakan produk label biru / merah</h3><p class="muted" style="font-size:13px;margin-bottom:10px">Diisi oleh QC Ass SPV ke atas</p>'+tview+tform+'</section>':'';
+  const tsec=(r.qn>0||r.kts==='ada'||r.tindakan)?tindakanBlock(r):'';
   const ver='';
   const confirming=S.confirmDel===r.id,acts=[];
   if(canEditReport(r))acts.push('<button class="btn" data-act="editreport" data-id="'+r.id+'">'+ic('edit')+'Edit laporan</button>');
@@ -1433,9 +1458,9 @@ function detailLogHTML(r){
   return '<div class="shead g-'+P.group+'"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+(r.shift?' · Shift '+esc(r.shift):'')+'</div><h2 class="mono" style="font-family:var(--f-mono);font-size:19px;margin-top:4px">'+esc(r.wo)+'</h2><div style="margin-top:4px;font-size:15px;font-weight:500">'+esc(r.product)+'</div>'+(r.customer?'<div class="muted" style="font-size:14px">'+esc(r.customer)+'</div>':'')+'</div>'+
      '<div style="display:flex;gap:10px;align-items:center">'+statusChip(r)+'<button class="btn sm ghost" data-act="closemodal" aria-label="Tutup">'+ic('x')+'</button></div></div>'+
    '<dl class="meta">'+
-    [['Tanggal',fmtFull(r.createdAt)],['Shift',r.shift],['QC Inspector',r.operatorName],['No. PR',r.wo],['WIP',P.label]].concat(r.sub?[['Jenis rewind',r.sub]]:[],[['Nama produk',r.product],['Customer',r.customer||'—'],[P.sizeLabel?'Ukuran potong (mm) x meter':'Ukuran kantong',r.size||'—'],['Nama mesin',r.machine||'—'],['OP mesin',r.op||'—'],['Kondisi mesin',r.cond==='ok'?'OK':r.cond?'Tidak OK':'—']]).map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd></div>').join('')+'</dl>'+
+    [['Tanggal',fmtFull(r.createdAt)],['Shift',r.shift],['QC Inspector',r.operatorName],['No. PR',r.wo],['WIP',P.label]].concat(r.sub?[['Jenis rewind',r.sub]]:[],[['Nama produk',r.product],['Customer',r.customer||'—'],[P.noSize?'__skip':(P.sizeLabel?'Ukuran potong (mm) x meter':'Ukuran kantong'),r.size||'—'],['Nama mesin',r.machine||'—'],['OP mesin',r.op||'—'],['Kondisi mesin',r.cond==='ok'?'OK':r.cond?'Tidak OK':'—']],P.rangeWarna?[['Range warna',r.rangeWarna==='ada'?'Ada':r.rangeWarna==='tidak'?'Tidak ada':'—']]:[]).filter(x=>x[0]!=='__skip').map(x=>'<div><dt>'+x[0]+'</dt><dd>'+esc(x[1])+'</dd></div>').join('')+'</dl>'+
    '<section><h3 style="margin-bottom:8px">Kuantitas ('+unitOf(r)+')</h3><div class="qtygrid">'+q('QC Pass',r.qp)+q('QC Not Pass',r.qn,r.qn>0?'var(--ng)':'')+q('Total',(r.qp||0)+(r.qn||0))+'</div></section>'+
-   ((r.dusOk||r.dusNg)?'<section><h3 style="margin-bottom:4px">Nomor dus</h3><div class="dl">'+(r.dusOk?'<div class="row"><div>Sudah diproses</div><div class="v" style="text-align:right;overflow-wrap:anywhere">'+esc(r.dusOk)+'</div></div>':'')+(r.dusNg?'<div class="row"><div>QC Not Pass</div><div class="v" style="text-align:right;overflow-wrap:anywhere">'+esc(r.dusNg)+'</div></div>':'')+'</div></section>':'')+
+   ((r.dusOk||r.dusNg)?'<section><h3 style="margin-bottom:4px">'+(P.dusCount?'Nomor jumbo':'Nomor dus')+'</h3><div class="dl">'+(r.dusOk?'<div class="row"><div>Sudah diproses</div><div class="v" style="text-align:right;overflow-wrap:anywhere">'+esc(r.dusOk)+'</div></div>':'')+(r.dusNg?'<div class="row"><div>'+(P.dusCount?'Terjadi defect':'QC Not Pass')+'</div><div class="v" style="text-align:right;overflow-wrap:anywhere">'+esc(r.dusNg)+'</div></div>':'')+'</div></section>':'')+
    '<section><h3 style="margin-bottom:6px">Ketidaksesuaian (KTS)</h3><div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">'+(r.kts==='ada'?chip('ng','Ada'):chip('ok','Tidak ada'))+(r.defect?'<p style="white-space:pre-wrap;overflow-wrap:anywhere;flex:1 1 220px">'+esc(r.defect)+'</p>':'')+'</div></section>'+
    tsec+sortirSection(r)+qcNoteSection(r)+editsHTML(r)+ver+'<div class="actions">'+acts.join('')+'</div>';
 }
@@ -1450,13 +1475,17 @@ async function submitTindakan(f){
 function summaryLog(r){
   const P=PROC[r.proc];
   const L=['Laporan '+plabel(r,P),'Tanggal: '+fmtFull(r.createdAt)+' (Shift '+r.shift+')','QC Inspector: '+r.operatorName,'No. PR: '+r.wo+' · '+r.product+(r.customer?' · '+r.customer:''),(P.sizeLabel?'Ukuran potong: ':'Ukuran: ')+(r.size||'-'),'Mesin: '+(r.machine||'-')+(r.op?' ('+r.op+')':'')+' · kondisi '+(r.cond==='ok'?'OK':'Tidak OK'),'Kuantitas: pass '+fmtInt(r.qp)+' · not pass '+fmtInt(r.qn)+' · total '+fmtInt((r.qp||0)+(r.qn||0))+' '+unitOf(r),'Status: '+(DISP[r.disp]||{}).t];
-  if(r.dusNg)L.push('No. dus Not Pass: '+r.dusNg);
+  if(P.rangeWarna)L.push('Range warna: '+(r.rangeWarna==='ada'?'Ada':'Tidak ada'));
+  if(r.dusNg)L.push((P.dusCount?'No. jumbo defect: ':'No. dus Not Pass: ')+r.dusNg);
   if(r.kts==='ada')L.push('KTS: Ada'+(r.defect?' - '+r.defect:''));
   if(r.tindakan)L.push('Tindakan: '+(TINDAKAN[r.tindakan]||{t:r.tindakan}).t+(r.tindakanNote?' - '+r.tindakanNote:''));
   return L.join('\n');
 }
 
 /* ================= RIWAYAT ================= */
+const GLABEL={printing:'Printing',laminasi:'Laminasi',bag:'Bag Making',slitting:'Slitting'};
+const grpOf=r=>(PROC[r.proc]||{}).group;
+function monthBounds(range){const m=/^m:(\d{4})-(\d{2})$/.exec(range||'');return m?[new Date(+m[1],+m[2]-1,1).getTime(),new Date(+m[1],+m[2],1).getTime()]:null}
 function filteredReports(){
   const f=S.filters,q=f.q.trim().toLowerCase();
   let cut=0;
@@ -1465,7 +1494,7 @@ function filteredReports(){
   else if(/^m:\d{4}-\d{2}$/.test(f.range)){const y=+f.range.slice(2,6),m=+f.range.slice(7)-1;mFrom=new Date(y,m,1).getTime();mTo=new Date(y,m+1,1).getTime()}
   else if(f.range!=='all')cut=Date.now()-Number(f.range)*86400000;
   return visibleReports().filter(r=>{
-    if(f.proc!=='all'&&r.proc!==f.proc)return false;
+    if(f.proc!=='all'&&grpOf(r)!==f.proc)return false;
     if(f.disp==='tindakan'){if(!(r.qn>0&&!r.tindakan))return false}
     else if(f.disp!=='all'&&r.disp!==f.disp)return false;
     if(cut&&new Date(r.createdAt).getTime()<cut)return false;
@@ -1484,7 +1513,7 @@ function monthOpts(cur){
 }
 function listHTML(me){
   const allowed=allowedProcs(),f=S.filters;
-  const opts='<option value="all">Semua proses</option>'+GROUPS.map(g=>{const it=g.items.filter(i=>allowed.includes(i));return it.length?'<optgroup label="'+esc(g.label)+'">'+it.map(i=>'<option value="'+i+'"'+(f.proc===i?' selected':'')+'>'+esc(PROC[i].label)+'</option>').join('')+'</optgroup>':''}).join('');
+  const opts='<option value="all">Semua proses</option>'+GROUPS.filter(g=>g.items.some(i=>allowed.includes(i))).map(g=>'<option value="'+g.id+'"'+(f.proc===g.id?' selected':'')+'>'+esc(g.label)+'</option>').join('');
   const sel=(v,cur)=>cur===v?' selected':'';
   return '<div class="pagehead"><div><h1>Laporan In-Line</h1><p class="sub" id="countTxt">'+filteredReports().length+' laporan</p></div>'+
     (isSpv()&&S.canDownload?'<button class="btn" data-act="export">'+ic('download')+'Unduh CSV</button>':'')+'</div>'+
@@ -1492,7 +1521,7 @@ function listHTML(me){
     '<div class="fld"><label for="fq">Cari</label><input class="in" id="fq" data-filter="q" type="search" placeholder="No. PR, produk, operator" value="'+esc(f.q)+'" autocomplete="off"></div>'+
     '<div class="fld"><label for="fp">Proses</label><select class="in" id="fp" data-filter="proc">'+opts.replace('<option value="all">','<option value="all"'+(f.proc==='all'?' selected':'')+'>')+'</select></div>'+
     '<div class="fld"><label for="fd">Status</label><select class="in" id="fd" data-filter="disp"><option value="all"'+sel('all',f.disp)+'>Semua status</option><option value="lulus"'+sel('lulus',f.disp)+'>Lulus</option><option value="hold"'+sel('hold',f.disp)+'>Hold</option><option value="reject"'+sel('reject',f.disp)+'>Reject</option>'+(me.role==='admin'?'<option value="tindakan"'+sel('tindakan',f.disp)+'>Menunggu tindakan</option>':'')+'</select></div>'+
-    '<div class="fld"><label for="fr">Periode</label><select class="in" id="fr" data-filter="range"><option value="today"'+sel('today',f.range)+'>Hari ini</option><option value="7"'+sel('7',f.range)+'>7 hari terakhir</option><option value="30"'+sel('30',f.range)+'>30 hari terakhir</option>'+monthOpts(f.range)+'<option value="all"'+sel('all',f.range)+'>Semua</option></select></div>'+
+    '<div class="fld"><label for="fr">Periode</label><select class="in" id="fr" data-filter="range">'+monthOpts(f.range)+'<option value="all"'+sel('all',f.range)+'>Semua periode</option></select></div>'+
    '</div><div id="results">'+resultsHTML()+'</div>';
 }
 const me0n=r=>{const me=getMe();return !!me&&noteUnread(r,me.id)};
@@ -1535,7 +1564,7 @@ async function exportCsv(){
 /* ================= DETAIL LAPORAN ================= */
 function detailHTML(r){
   if(r.vid)return detailRollHTML(r);
-  if(PROC[r.proc]&&PROC[r.proc].kind==='log')return detailLogHTML(r);
+  if(logOf(r))return detailLogHTML(r);
   const me=getMe(),P=PROC[r.proc]||{label:r.proc,group:'printing',measures:[],checks:[]};
   const meas=P.measures.filter(m=>r.vals&&r.vals[m.k]!=null).map(m=>{
     const s=mStatus(m,r.vals[m.k],r.targets&&r.targets[m.k]);
@@ -1560,18 +1589,26 @@ function detailHTML(r){
    (r.note?'<section><h3 style="margin-bottom:6px">Catatan</h3><p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.note)+'</p></section>':'')+
    agingSection(r)+qcNoteSection(r)+editsHTML(r)+ver+'<div class="actions">'+acts.join('')+'</div>';
 }
+const saveBtn=(label,done,saved)=>'<button class="btn pri savebtn'+(saved?' saved':'')+'" type="submit" data-l="'+esc(label)+'" data-s="'+esc(done)+'">'+(saved?ic('check')+esc(done):esc(label))+'</button>';
+function syncSave(f){
+  const o=f.dataset.orig,b=f.querySelector('.savebtn');if(!b)return;
+  const cur=f.dataset.form==='tindakan'?JSON.stringify([f.elements['tindakan'].value,f.elements['tnote'].value.trim()]):JSON.stringify([f.elements['qnote'].value.trim()]);
+  const saved=!!o&&o===cur;
+  b.classList.toggle('saved',saved);b.innerHTML=saved?ic('check')+esc(b.dataset.s):esc(b.dataset.l);
+}
 function tindakanBlock(r){
-  const tn=r.tindakan?TINDAKAN[r.tindakan]:null;
-  const tview=tn?chip(tn.c,tn.t)+(r.tindakanNote?'<p style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.tindakanNote)+'</p>':'')+(r.tindakanBy?'<div class="faint" style="font-size:13px;margin-top:6px">'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</div>':''):'<span class="faint">Belum ditentukan</span>';
-  const tform=isSpv()?'<form data-form="tindakan" data-id="'+esc(r.id)+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px" novalidate>'+
+  const tn=r.tindakan?TINDAKAN[r.tindakan]:null,done=!!(r.tindakan||r.tindakanNote);
+  const tview=tn?chip(tn.c,tn.t)+(r.tindakanNote?'<p style="margin-top:8px;white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.tindakanNote)+'</p>':'')+(r.tindakanBy?'<div class="faint" style="font-size:13px;margin-top:6px">'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</div>':''):(r.tindakanNote?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(r.tindakanNote)+'</p>':'<span class="faint">Belum ada tindakan</span>');
+  const orig=done?JSON.stringify([r.tindakan||'',(r.tindakanNote||'').trim()]):'';
+  const tform=isSpv()?'<form data-form="tindakan" data-id="'+esc(r.id)+'" data-orig="'+esc(orig)+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px" novalidate>'+
     '<div class="fld"><label for="t_sel">Tindakan</label><select class="in" id="t_sel" name="tindakan"><option value="">Belum ditentukan</option>'+tOpts(r).map(k=>'<option value="'+k+'"'+(r.tindakan===k?' selected':'')+'>'+TINDAKAN[k].t+'</option>').join('')+'</select></div>'+
     '<div class="fld"><label for="t_note">Keterangan</label><textarea class="in" id="t_note" name="tnote">'+esc(r.tindakanNote||'')+'</textarea></div>'+
-    '<div><button class="btn" type="submit">Simpan tindakan</button></div></form>':'';
-  return '<section class="panel pad"><h3 style="margin-bottom:2px">Tindakan produk QC Not Pass</h3><p class="muted" style="font-size:13px;margin-bottom:10px">Diisi oleh QC Ass SPV ke atas</p>'+tview+tform+'</section>';
+    '<div>'+saveBtn('Simpan tindakan','Tindakan tersimpan',done)+'</div></form>':'';
+  return '<section class="hl '+(done?'ok':'ng')+'"><div class="hlh"><span class="hli">'+ic(done?'check':'alert')+'</span><div class="hlt"><h3>'+(r.vid?'Tindakan produk QC Not Pass':'Tindakan produk label biru / merah')+'</h3><p class="hlsub">Diisi oleh QC Ass SPV ke atas</p></div>'+(done?chip('ok','Sudah ditindak'):chip('ng','Perlu tindakan'))+'</div><div class="hlb"><div class="hlview">'+tview+'</div>'+tform+'</div></section>';
 }
 function detailRollHTML(v){
-  const r=v.rep,k=v.roll,po=planOut(r),P=PROC[r.proc];
-  const meta=[['Tanggal',fmtFull(r.createdAt)],['Shift',r.shift],['QC Lami Inspector',r.inspector||r.operatorName],['No. PR',r.wo],['Nama produk',r.product],['Customer',r.customer||'—'],['No. roll',k.no],['Kuantiti',fmtInt(k.m)+' m'],['Komposisi',r.komposisi||'—'],['Masuk aging',fmtDT(new Date(r.agingIn))],['Plan keluar aging',fmtDT(po)]];
+  const r=v.rep,k=v.roll,po=planOutK(r,k),P=PROC[r.proc];
+  const meta=[['Tanggal',fmtFull(r.createdAt)],['Shift',r.shift],['QC Lami Inspector',r.inspector||r.operatorName],['No. PR',r.wo],['Nama produk',r.product],['Customer',r.customer||'—'],['No. roll',k.no],['Kuantiti',fmtInt(k.m)+' m'],['Komposisi',r.komposisi||'—'],['Masuk aging',fmtDT(rollIn(r,k))],['Plan keluar aging',fmtDT(po)]];
   const st=(AG_ST[k.s]||AG_ST.pass),c=k.check,cs=c?(AG_ST[c.status]||AG_ST.pass):null;
   const rows='<div class="dl"><div class="row"><div>QC Lami</div><div>'+chip(st.c,st.t)+'</div></div>'+(cs?'<div class="row"><div><div>QC Aging Check</div><div class="sp">'+esc(c.inspector||'')+' · '+esc(c.date||'')+' · Shift '+esc(c.shift||'—')+'</div></div><div>'+chip(cs.c,cs.t)+'</div></div>'+(c.kts==='ada'?'<div class="row"><div>KTS aging</div><div style="text-align:right;overflow-wrap:anywhere">'+esc(c.ktsNote||'Ada')+'</div></div>':''):'<div class="row"><div>QC Aging Check</div><div class="faint">Belum dicek</div></div>')+'</div>';
   return '<div class="shead g-'+P.group+'"><div><div class="eyebrow" style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(v,P))+(r.shift?' · Shift '+esc(r.shift):'')+'</div><h2 class="mono" style="font-family:var(--f-mono);font-size:19px;margin-top:4px">'+esc(r.wo)+'</h2><div style="margin-top:4px;font-size:15px;font-weight:500">'+esc(r.product)+'</div>'+(r.customer?'<div class="muted" style="font-size:14px">'+esc(r.customer)+'</div>':'')+'</div>'+
@@ -1607,7 +1644,7 @@ function renderModal(){
 }
 function closeModal(){S.detailId=null;S.memoId=null;S.modal=null;S.userEdit=null;S.confirmDel=null;renderModal();if(S.view!=='form')render()}
 function summaryText(r){
-  if(PROC[r.proc]&&PROC[r.proc].kind==='log')return summaryLog(r);
+  if(logOf(r))return summaryLog(r);
   const P=PROC[r.proc]||{label:r.proc,measures:[],checks:[]};
   const L=['Laporan '+P.label,'Waktu: '+fmtFull(r.createdAt)+' (Shift '+r.shift+')','Operator: '+r.operatorName,'No. PR: '+r.wo+' · '+r.product+(r.customer?' · '+r.customer:''),'Hasil: '+(DISP[r.disp]||{}).t];
   P.measures.forEach(m=>{if(r.vals&&r.vals[m.k]!=null)L.push('- '+m.label+': '+fmtNum(r.vals[m.k])+' '+m.unit+' ('+(mStatus(m,r.vals[m.k],r.targets&&r.targets[m.k])==='ng'?'di luar spek':'sesuai')+')')});
@@ -1631,13 +1668,14 @@ async function copyText(t){
 /* ================= TOLAKAN ================= */
 function tFiltered(){
   const f=S.tf,q=f.q.trim().toLowerCase();
-  let cut=0;
-  if(f.range==='today')cut=startOfDay(new Date()).getTime();
-  else if(f.range!=='all')cut=Date.now()-Number(f.range)*86400000;
+  const mb=monthBounds(f.range);let cut=0;
+  if(!mb&&f.range==='today')cut=startOfDay(new Date()).getTime();
+  else if(!mb&&f.range!=='all'&&!isNaN(Number(f.range)))cut=Date.now()-Number(f.range)*86400000;
   return tolakanItems().filter(r=>{
     if(!isTolakan(r))return false;
-    if(f.proc!=='all'&&r.proc!==f.proc)return false;
+    if(f.proc!=='all'&&grpOf(r)!==f.proc)return false;
     if(f.st!=='all'&&tolakanState(r)!==f.st)return false;
+    if(mb){const t=new Date(r.createdAt).getTime();if(t<mb[0]||t>=mb[1])return false}
     if(cut&&new Date(r.createdAt).getTime()<cut)return false;
     if(q){const hay=[r.wo,r.product,r.customer,r.machine,r.operatorName,r.defect,r.size,r.no].join(' ').toLowerCase();if(!hay.includes(q))return false}
     return true;
@@ -1655,11 +1693,12 @@ function tInfo(r){
     if(c&&c.kts==='ada')add('KTS aging',c.ktsNote);
     return L;
   }
-  if(P.kind==='log'){
+  if(logOf(r)){
     add('Mesin',[r.machine,r.op].filter(Boolean).join(' · '));
-    add(P.sizeLabel?'Ukuran potong':'Ukuran',r.size);add('Jenis',r.sub);
+    if(!P.noSize)add(P.sizeLabel?'Ukuran potong':'Ukuran',r.size);add('Jenis',r.sub);
+    if(P.rangeWarna)add('Range warna',r.rangeWarna==='ada'?'Ada':r.rangeWarna==='tidak'?'Tidak ada':'');
     add('Qty',r.qp!=null?'Pass '+fmtInt(r.qp)+' · NG '+fmtInt(r.qn||0)+' '+unitOf(r):'');
-    add('No. dus NG',r.dusNg);add('Inspector',r.operatorName);
+    add(P.dusCount?'No. jumbo defect':'No. dus NG',r.dusNg);add('Inspector',r.operatorName);
     return L;
   }
   add('Mesin',r.machine);add('Batch',r.batch);
@@ -1671,43 +1710,44 @@ function tInfo(r){
 function tChip(r){
   const st=tolakanState(r);
   if(st==='na')return '<span class="faint" title="Tindakan tersedia untuk Bag Making, Spout, Slitting, Rewind, dan Dry Laminasi">—</span>';
-  if(st==='wait')return chip('hold','Menunggu');
+  if(st==='wait')return chip('mute','Menunggu');
   const t=TINDAKAN[st]||{c:'mute',t:st};return chip(t.c,t.t);
 }
 function tResultsHTML(){
   const rs=tFiltered();
-  const ng=rs.reduce((a,r)=>a+(r.qn>0?r.qn:0),0),ngTxt=sumUnits(rs,r=>r.qn>0?r.qn:0),wait=rs.filter(r=>canAct(r)&&!r.tindakan).length,done=rs.filter(r=>canAct(r)&&r.tindakan).length;
+  const wait=rs.filter(r=>canAct(r)&&!r.tindakan).length,done=rs.filter(r=>canAct(r)&&r.tindakan).length;
   const ct=$('#tcount');if(ct)ct.textContent=rs.length+' item tolakan';
-  const strip='<div class="panel strip"><div><div class="n">'+rs.length+'</div><div class="l">Item tolakan</div></div>'+
-    '<div><div class="n" style="color:'+(ng?'var(--ng)':'inherit')+';font-size:'+(ngTxt.includes('·')?'22px':'34px')+'">'+ngTxt+'</div><div class="l">Total Not Pass</div></div>'+
+  const bg={};Object.keys(GLABEL).forEach(k=>bg[k]={n:0,w:0,u:{}});
+  rs.forEach(r=>{const g=bg[grpOf(r)];if(!g)return;g.n++;if(canAct(r)&&!r.tindakan)g.w++;if(r.qn>0)g.u[unitOf(r)]=(g.u[unitOf(r)]||0)+r.qn});
+  const gcell=k=>{const g=bg[k],q=Object.keys(g.u).map(u=>fmtInt(g.u[u])+' '+u).join(' + ');return '<div><div class="n" style="color:'+(g.n?'var(--ng)':'inherit')+'">'+g.n+'</div><div class="l">'+GLABEL[k]+'</div><div class="faint" style="font-size:13px;margin-top:2px">'+(g.n?esc(q||'tanpa qty')+(g.w?' · '+g.w+' menunggu':''):'Tidak ada tolakan')+'</div></div>'};
+  const strip='<div class="panel strip">'+Object.keys(GLABEL).map(gcell).join('')+'</div>'+
+    '<div class="panel strip"><div><div class="n">'+rs.length+'</div><div class="l">Item tolakan</div></div>'+
     '<div><div class="n" style="color:'+(wait?'var(--hold)':'inherit')+'">'+wait+'</div><div class="l">Menunggu tindakan</div></div>'+
     '<div><div class="n">'+done+'</div><div class="l">Sudah ditindak</div></div></div>';
-  const bp={};rs.forEach(r=>{const k=(PROC[r.proc]||{label:r.proc}).label;const b=bp[k]||(bp[k]={n:0,u:{}});b.n++;if(r.qn>0)b.u[unitOf(r)]=(b.u[unitOf(r)]||0)+r.qn});
-  const brk=rs.length?'<div class="panel pad" style="display:flex;gap:8px 18px;flex-wrap:wrap;align-items:center"><span class="faint" style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:600">Per proses</span>'+Object.keys(bp).map(k=>'<span style="font-size:14px"><b style="font-weight:600">'+esc(k)+'</b> '+bp[k].n+' item'+(Object.keys(bp[k].u).length?' · <span class="mono" style="color:var(--ng)">'+Object.keys(bp[k].u).map(u=>fmtInt(bp[k].u[u])+' '+u).join(' + ')+'</span>':'')+'</span>').join('')+'</div>':'';
   if(!rs.length)return strip+'<div class="panel empty"><b>Tidak ada tolakan</b><span>Ubah filter atau periode untuk melihat tolakan lain.</span></div>';
   const rows=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
     return '<tr data-act="open" data-id="'+r.id+'" tabindex="0" class="g-'+P.group+'"><td>'+fmtT(r.createdAt)+'</td><td>'+esc(r.shift||'—')+'</td>'+
     '<td><span style="display:flex;align-items:center;gap:8px"><span class="pdot"></span>'+esc(plabel(r,P))+'</span></td>'+
     '<td class="mono">'+esc(r.wo)+'</td><td>'+esc(r.product)+'</td><td>'+esc(r.customer||'—')+'</td>'+
-    '<td style="min-width:240px;max-width:340px;overflow-wrap:anywhere"><div class="cell2"><b style="font-weight:500">'+esc(causeOf(r))+'</b>'+tInfo(r).map(l=>'<small>'+esc(l)+'</small>').join('')+'</div></td>'+
-    '<td class="mono">'+(r.qn>0?fmtInt(r.qn)+' '+unitOf(r):'—')+'</td><td><div class="cell2">'+tChip(r)+(r.tindakanNote?'<small>'+esc(r.tindakanNote)+'</small>':'')+(r.tindakanBy?'<small>'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</small>':'')+'</div></td></tr>'}).join('');
+    '<td style="min-width:240px;max-width:340px;overflow-wrap:anywhere">'+esc(causeOf(r))+'</td>'+
+    '<td class="mono">'+(r.qn>0?fmtInt(r.qn)+' '+unitOf(r):'—')+'</td><td><div class="cell2" style="align-items:flex-start">'+tChip(r)+(r.tindakanNote?'<small>'+esc(r.tindakanNote)+'</small>':'')+(r.tindakanBy?'<small>'+esc(r.tindakanBy.name)+' · '+fmtT(r.tindakanBy.at)+'</small>':'')+'</div></td></tr>'}).join('');
   const cards=rs.map(r=>{const P=PROC[r.proc]||{label:r.proc,group:'printing'};
     return '<button class="card g-'+P.group+'" data-act="open" data-id="'+r.id+'"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+'</span>'+tChip(r)+'</div>'+
     '<div class="r2"><span class="pdot"></span>'+esc(plabel(r,P))+'</div>'+
-    '<div style="font-size:14px;overflow-wrap:anywhere"><b>'+esc(causeOf(r))+'</b>'+tInfo(r).map(l=>'<div class="faint" style="font-size:13px">'+esc(l)+'</div>').join('')+(r.tindakanNote?'<div style="font-size:13px;margin-top:4px">Tindakan: '+esc(r.tindakanNote)+'</div>':'')+'</div>'+
+    '<div style="font-size:14px;overflow-wrap:anywhere">'+esc(causeOf(r))+(r.tindakanNote?'<div style="font-size:13px;margin-top:4px">Tindakan: '+esc(r.tindakanNote)+'</div>':'')+'</div>'+
     '<div class="r3"><span>Shift '+esc(r.shift||'—')+'</span><span>'+esc(r.product)+'</span>'+(r.customer?'<span>'+esc(r.customer)+'</span>':'')+''+(r.qn>0?'<span class="mono" style="color:var(--ng)">'+fmtInt(r.qn)+' '+unitOf(r)+' NG</span>':'')+'<span>'+fmtT(r.createdAt)+'</span></div></button>'}).join('');
-  return strip+brk+'<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Penyebab dan detail</th><th>Not Pass</th><th>Tindakan</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
+  return strip+'<div class="panel tblwrap"><table><thead><tr><th>Waktu</th><th>Shift</th><th>Proses</th><th>No. PR</th><th>Nama produk</th><th>Customer</th><th>Keterangan defect</th><th>Not Pass</th><th>Tindakan</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="cards">'+cards+'</div>';
 }
 function tolakanHTML(me){
   const f=S.tf,sel=(v,c)=>c===v?' selected':'';
-  const opts='<option value="all"'+sel('all',f.proc)+'>Semua proses</option>'+GROUPS.map(g=>'<optgroup label="'+esc(g.label)+'">'+g.items.map(i=>'<option value="'+i+'"'+sel(i,f.proc)+'>'+esc(PROC[i].label)+'</option>').join('')+'</optgroup>').join('');
+  const opts='<option value="all"'+sel('all',f.proc)+'>Semua proses</option>'+GROUPS.map(g=>'<option value="'+g.id+'"'+sel(g.id,f.proc)+'>'+esc(g.label)+'</option>').join('');
   return '<div class="pagehead"><div><h1>Tolakan</h1><p class="sub" id="tcount">'+tFiltered().length+' item tolakan</p></div></div>'+
-   '<p class="muted" style="max-width:68ch">Rekap semua produk Not Pass atau di luar spesifikasi dari seluruh proses. Tindakan bisa diberikan untuk Bag Making, Spout, Slitting, Rewind, dan Dry Laminasi. Untuk Dry Laminasi, yang tampil hanya roll yang QC Not Pass (satu baris per roll). Progress Sortir hanya untuk Bag Making dan Slitting.</p>'+
+   '<p class="muted" style="max-width:68ch">Rekap semua produk Not Pass atau di luar spesifikasi dari seluruh proses. Tindakan bisa diberikan untuk Printing, Bag Making, Spout, Slitting, Rewind, dan Dry Laminasi. Untuk Dry Laminasi, yang tampil hanya roll yang QC Not Pass (satu baris per roll). Progress Sortir hanya untuk Bag Making dan Slitting.</p>'+
    '<div class="filters">'+
     '<div class="fld"><label for="tq">Cari</label><input class="in" id="tq" data-tf="q" type="search" placeholder="No. PR, produk, defect" value="'+esc(f.q)+'" autocomplete="off"></div>'+
     '<div class="fld"><label for="tp">Proses</label><select class="in" id="tp" data-tf="proc">'+opts+'</select></div>'+
     '<div class="fld"><label for="ts">Tindakan</label><select class="in" id="ts" data-tf="st"><option value="all"'+sel('all',f.st)+'>Semua</option><option value="wait"'+sel('wait',f.st)+'>Menunggu tindakan</option>'+Object.keys(TINDAKAN).map(k=>'<option value="'+k+'"'+sel(k,f.st)+'>'+TINDAKAN[k].t+'</option>').join('')+'</select></div>'+
-    '<div class="fld"><label for="tr">Periode</label><select class="in" id="tr" data-tf="range"><option value="today"'+sel('today',f.range)+'>Hari ini</option><option value="7"'+sel('7',f.range)+'>7 hari terakhir</option><option value="30"'+sel('30',f.range)+'>30 hari terakhir</option><option value="all"'+sel('all',f.range)+'>Semua</option></select></div>'+
+    '<div class="fld"><label for="tr">Periode</label><select class="in" id="tr" data-tf="range">'+monthOpts(f.range)+'<option value="all"'+sel('all',f.range)+'>Semua periode</option></select></div>'+
    '</div><div id="tresults" style="display:flex;flex-direction:column;gap:16px">'+tResultsHTML()+'</div>';
 }
 
@@ -1765,7 +1805,7 @@ function sortirHTML(me){
    '</div><div id="sresults" style="display:flex;flex-direction:column;gap:16px">'+sResultsHTML()+'</div>';
 }
 function sortirSection(r){
-  if(r.vid||!(canAct(r)&&isSortirT(r.tindakan)))return '';
+  if(r.vid||!(inSort(r)&&isSortirT(r.tindakan)))return '';
   const st=sortSt(r),x=SORT_ST[st],sm=sortSum(r),L=sortLog(r).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.at).localeCompare(String(a.at))),can=canSortir(r),me=getMe();
   const tot=r.qn||0,left=Math.max(0,tot-sm.done),un=unitOf(r);
   const head='<div style="display:flex;flex-direction:column;gap:10px">'+'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+chip(x.c,x.t)+'<span class="muted" style="font-size:14px">'+(tot?'Sisa '+fmtInt(left)+' '+un:'')+'</span></div>'+((tot||st==='selesai')?sortBar(r):'')+
@@ -1794,12 +1834,12 @@ function sortirSection(r){
 }
 function agingSection(r){
   if(!(PROC[r.proc]&&PROC[r.proc].aging&&(r.rolls||[]).length))return '';
-  const po=planOut(r),now=Date.now();
+  const now=Date.now();
   const rows=r.rolls.map(k=>{
     const st=k.check?(AG_ST[k.check.status]||AG_ST.pass):null;
-    return '<div class="row"><div><b style="font-weight:600" class="mono">'+esc(k.no)+'</b><div class="sp">'+fmtInt(k.m)+' m · QC Lami '+(AG_ST[k.s]||AG_ST.pass).t+(k.tindakan&&TINDAKAN[k.tindakan]?' · '+TINDAKAN[k.tindakan].t:'')+'</div></div><div style="text-align:right">'+(st?chip(st.c,st.t)+'<div class="sp">'+esc(k.check.inspector||'')+' · '+esc(k.check.date||'')+'</div>':(po&&po.getTime()<=now?chip('hold','Siap dicek'):chip('mute','Dalam aging')))+'</div></div>';
+    return '<div class="row"><div><b style="font-weight:600" class="mono">'+esc(k.no)+'</b><div class="sp">'+fmtInt(k.m)+' m · QC Lami '+(AG_ST[k.s]||AG_ST.pass).t+(k.tindakan&&TINDAKAN[k.tindakan]?' · '+TINDAKAN[k.tindakan].t:'')+'</div><div class="sp">Masuk '+esc(fmtDT(rollIn(r,k)))+' · Keluar '+esc(fmtDT(planOutK(r,k)))+'</div></div><div style="text-align:right">'+(st?chip(st.c,st.t)+'<div class="sp">'+esc(k.check.inspector||'')+' · '+esc(k.check.date||'')+'</div>':(planOutK(r,k)&&planOutK(r,k).getTime()<=now?chip('hold','Siap dicek'):chip('mute','Dalam aging')))+'</div></div>';
   }).join('');
-  return '<section><h3 style="margin-bottom:4px">Aging</h3><div class="dl"><div class="row"><div>Komposisi</div><div class="v">'+esc(r.komposisi||'—')+'</div></div><div class="row"><div>Durasi aging</div><div class="v">'+esc(r.agingDays)+' hari</div></div><div class="row"><div>Masuk aging</div><div class="v">'+esc(fmtDT(new Date(r.agingIn)))+'</div></div><div class="row"><div>Plan keluar aging</div><div class="v">'+esc(fmtDT(po))+'</div></div></div>'+
+  return '<section><h3 style="margin-bottom:4px">Aging</h3><div class="dl"><div class="row"><div>Komposisi</div><div class="v">'+esc(r.komposisi||'—')+'</div></div><div class="row"><div>Durasi aging</div><div class="v">'+esc(r.agingDays)+' hari</div></div></div>'+
     '<h3 style="margin:14px 0 4px">Roll ('+r.rolls.length+')</h3><div class="dl">'+rows+'</div></section>';
 }
 const AG_STT={due:{t:'Siap dicek',c:'hold'},wait:{t:'Dalam aging',c:'mute'},done:{t:'Sudah dicek',c:'ok'}};
@@ -1811,7 +1851,7 @@ function agFiltered(){
     return true;
   }).sort((a,b)=>a.st==='done'&&b.st==='done'?String(b.k.check.at).localeCompare(String(a.k.check.at)):((a.po?a.po.getTime():0)-(b.po?b.po.getTime():0)));
 }
-const agTind=x=>rollNG(x.k)?(x.k.tindakan&&TINDAKAN[x.k.tindakan]?chip(TINDAKAN[x.k.tindakan].c,TINDAKAN[x.k.tindakan].t):chip('hold','Menunggu tindakan')):'';
+const agTind=x=>rollNG(x.k)?(x.k.tindakan&&TINDAKAN[x.k.tindakan]?chip(TINDAKAN[x.k.tindakan].c,TINDAKAN[x.k.tindakan].t):chip('mute','Menunggu tindakan')):'';
 function agCheckCell(x){
   const c=x.k.check;if(!c)return '<span class="chips">'+chip(AG_STT[x.st].c,AG_STT[x.st].t)+agTind(x)+'</span>';
   const st=AG_ST[c.status]||AG_ST.pass;
@@ -1827,7 +1867,8 @@ function schedGroups(){
   agingItems().forEach(x=>{
     if(x.st==='done'||!x.po)return;
     if(q&&![x.r.product,x.r.wo,x.k.no,x.r.customer,x.r.komposisi].join(' ').toLowerCase().includes(q))return;
-    const g=by[x.r.id]||(by[x.r.id]={r:x.r,po:x.po,items:[]});g.items.push(x);
+    const gk=x.r.id+'|'+(x.po.getTime()<=Date.now()?'due':Math.floor(x.po.getTime()/60000));
+    const g=by[gk]||(by[gk]={r:x.r,po:x.po,items:[]});if(x.po<g.po)g.po=x.po;g.items.push(x);
   });
   return Object.keys(by).map(k=>by[k]).sort((a,b)=>a.po-b.po);
 }
@@ -1841,7 +1882,7 @@ function agSchedHTML(){
   Object.keys(map).sort().forEach(k=>sections.push([dayLbl(map[k][0].po.getTime()),map[k]]));
   return sections.map(sec=>'<section class="panel pad"><h3 style="margin-bottom:4px">'+esc(sec[0])+'</h3><div class="dl">'+sec[1].map(g=>{
     const r=g.r,isDue=g.po.getTime()<=now,tot=g.items.reduce((a,x)=>a+(x.k.m||0),0),dn=g.items.filter(x=>x.st==='due').length;
-    return '<div class="row" data-act="agopenrep" data-id="'+esc(r.id)+'" tabindex="0" role="button" style="cursor:pointer"><div><b style="font-weight:600">'+esc(r.product)+'</b><div class="sp">'+esc(r.wo)+' · '+esc(r.customer||'—')+' · '+g.items.length+' roll · '+fmtInt(tot)+' m</div><div class="sp">Roll: '+esc(g.items.map(x=>x.k.no).join(', '))+'</div></div>'+
+    return '<div class="row" data-act="agopenrep" data-id="'+esc(r.id)+'" data-keys="'+esc(g.items.map(x=>x.key).join(','))+'" tabindex="0" role="button" style="cursor:pointer"><div><b style="font-weight:600">'+esc(r.product)+'</b><div class="sp">'+esc(r.wo)+' · '+esc(r.customer||'—')+' · '+g.items.length+' roll · '+fmtInt(tot)+' m</div><div class="sp">Roll: '+esc(g.items.map(x=>x.k.no).join(', '))+'</div></div>'+
       '<div style="text-align:right"><div class="mono" style="font-weight:600">'+(isDue?'':pad(g.po.getHours())+':'+pad(g.po.getMinutes()))+(isDue?fmtDT(g.po):'')+'</div><div>'+(isDue?chip('hold','Siap dicek'+(dn&&dn<g.items.length?' ('+dn+')':'')):chip('mute',relT(g.po.getTime()-now)+' lagi'))+'</div></div></div>'}).join('')+'</div></section>').join('');
 }
 function agCountTxt(){return S.ag.view==='jadwal'?schedGroups().length+' jadwal produk':agFiltered().length+' roll'}
@@ -1862,7 +1903,7 @@ function agResultsHTML(){
     return '<tr data-act="agopen" data-key="'+esc(x.key)+'" tabindex="0" class="g-laminasi"><td>'+(x.st==='due'?'<input type="checkbox" class="agchk" data-agpick="'+esc(x.key)+'"'+(S.agPick.includes(x.key)?' checked':'')+' aria-label="Pilih roll '+esc(k.no)+'">':'')+'</td>'+
     '<td><div class="cell2"><b style="font-weight:500">'+esc(r.product)+'</b><small>'+esc(r.customer||'—')+'</small></div></td><td class="mono">'+esc(r.wo)+'</td><td><div class="cell2"><b class="mono" style="font-weight:500">'+esc(k.no)+'</b><small class="mono">'+fmtInt(k.m)+' m</small></div></td><td>'+esc(r.komposisi||'—')+'</td>'+
     '<td><div style="display:flex;flex-direction:column;gap:2px"><span>'+chip((AG_ST[k.s]||AG_ST.pass).c,(AG_ST[k.s]||AG_ST.pass).t)+'</span><span class="faint" style="font-size:13px">'+esc(r.operatorName)+'</span></div></td>'+
-    '<td class="mono">'+esc(r.agingDays)+'</td><td>'+esc(fmtDT(new Date(r.agingIn)))+'</td><td>'+esc(fmtDT(x.po))+'</td><td>'+agCheckCell(x)+'</td></tr>'}).join('');
+    '<td class="mono">'+esc(r.agingDays)+'</td><td>'+esc(fmtDT(rollIn(r,k)))+'</td><td>'+esc(fmtDT(x.po))+'</td><td>'+agCheckCell(x)+'</td></tr>'}).join('');
   const cards=rs.map(x=>{const r=x.r,k=x.k;
     return '<div class="card g-laminasi"><button class="card-in" data-act="agopen" data-key="'+esc(x.key)+'" style="all:unset;display:flex;flex-direction:column;gap:6px;cursor:pointer"><div class="r1"><span class="mono" style="font-size:13px">'+esc(r.wo)+' · Roll '+esc(k.no)+'</span>'+chip(AG_STT[x.st].c,AG_STT[x.st].t)+'</div>'+
     '<div class="r2">'+esc(r.product)+'</div><div class="r3"><span class="mono">'+fmtInt(k.m)+' m</span><span>'+esc(r.customer||'—')+'</span><span>Keluar aging '+esc(fmtDT(x.po))+'</span></div>'+(k.check?'<div class="ncard">'+chip((AG_ST[k.check.status]||AG_ST.pass).c,(AG_ST[k.check.status]||AG_ST.pass).t)+' '+esc(k.check.inspector||'')+' · Shift '+esc(k.check.shift||'—')+'</div>':'')+'</button>'+
@@ -1922,7 +1963,7 @@ async function exportAging(){
   if(!dlh&&!S.remote)return;
   const head=['Nama Produk','No. PR','No. Roll','Kuantiti (m)','Komposisi','Customer','QC Lami Inspector','QC Lami Status','Durasi Aging (hari)','Actual In Aging Tanggal','Actual In Aging Pukul','Plan Out Aging Tanggal','Plan Out Aging Pukul','Tanggal Pemeriksaan','Shift','QC Aging Inspector','QC Aging Status','Catatan'];
   const lines=[head.map(csvEscape).join(',')];
-  agFiltered().forEach(x=>{const r=x.r,k=x.k,c=k.check,ai=new Date(r.agingIn),po=x.po,hm=d=>d?pad(d.getHours())+':'+pad(d.getMinutes()):'';
+  agFiltered().forEach(x=>{const r=x.r,k=x.k,c=k.check,ai=rollIn(r,k),po=x.po,hm=d=>d?pad(d.getHours())+':'+pad(d.getMinutes()):'';
     lines.push([r.product,r.wo,k.no,k.m,r.komposisi,r.customer,r.operatorName,(AG_ST[k.s]||AG_ST.pass).t,r.agingDays,fmtD(ai),hm(ai),po?fmtD(po):'',hm(po),c?c.date:'',c?c.shift:'',c?c.inspector:'',c?(AG_ST[c.status]||AG_ST.pass).t:'',c?c.note:''].map(csvEscape).join(','));
   });
   const fn='monitoring-aging-'+new Date().toISOString().slice(0,10)+'.csv',txt='\ufeff'+lines.join('\r\n');
@@ -1934,10 +1975,11 @@ function qcNoteSection(r){
   const n=r.qcNote&&r.qcNote.text?r.qcNote:null,can=isSpv();
   if(!n&&!can)return '';
   const view=n?'<p style="white-space:pre-wrap;overflow-wrap:anywhere">'+esc(n.text)+'</p><div class="faint" style="font-size:13px;margin-top:6px">'+esc(n.name||'QC')+' · '+fmtT(n.at)+'</div>':'<span class="faint">Belum ada catatan</span>';
-  const form=can?'<form data-form="qcnote" data-id="'+r.id+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px" novalidate>'+
+  const orig=n?JSON.stringify([n.text.trim()]):'';
+  const form=can?'<form data-form="qcnote" data-id="'+esc(r.id)+'" data-orig="'+esc(orig)+'" style="display:flex;flex-direction:column;gap:10px;margin-top:14px" novalidate>'+
     '<div class="fld"><label for="q_note">'+(n?'Ubah catatan':'Tulis catatan')+'</label><textarea class="in" id="q_note" name="qnote" placeholder="Contoh: Tolong cek ulang ukuran potong sebelum lanjut.">'+esc(n?n.text:'')+'</textarea></div>'+
-    '<div><button class="btn" type="submit">Simpan catatan</button></div></form>':'';
-  return '<section class="panel pad"><h3 style="margin-bottom:2px">Catatan QC</h3><p class="muted" style="font-size:13px;margin-bottom:10px">'+(can?'Diisi oleh QC Ass SPV ke atas. Pembuat laporan mendapat notifikasi.':'Dari QC Ass SPV ke atas')+'</p>'+view+form+'</section>';
+    '<div>'+saveBtn('Simpan catatan','Catatan tersimpan',!!n)+'</div></form>':'';
+  return '<section class="hl info"><div class="hlh"><span class="hli">'+ic('mail')+'</span><div class="hlt"><h3>Catatan QC</h3><p class="hlsub">'+(can?'Diisi oleh QC Ass SPV ke atas. Pembuat laporan mendapat notifikasi.':'Dari QC Ass SPV ke atas')+'</p></div></div><div class="hlb"><div class="hlview">'+view+'</div>'+form+'</div></section>';
 }
 async function submitQcNote(f){
   const r=S.reports.find(x=>x.id===f.dataset.id),me=getMe();if(!r||!isSpv())return;
@@ -2145,13 +2187,13 @@ document.addEventListener('click',async e=>{
       break}
     case 'closemodal':closeModal();break;
     case 'addroll':{captureDraft();const d=curDraft();if(!d)break;const n=rollCount(d);d.rollN=n+1;const prev=d.data['rm_'+(n-1)];if(prev&&!d.data['rm_'+n])d.data['rm_'+n]=prev;saveDrafts();S.domDraft=null;render();break}
-    case 'delroll':{captureDraft();const d=curDraft(),i=+el.dataset.i;if(!d)break;const n=rollCount(d),ps=['rn','rm','rs','ri'];
+    case 'delroll':{captureDraft();const d=curDraft(),i=+el.dataset.i;if(!d)break;const n=rollCount(d),ps=['rn','rm','rs','ri','rd','rt'];
       if(n<=1){ps.forEach(q=>delete d.data[q+'_0'])}
       else{for(let k=i;k<n-1;k++)ps.forEach(q=>{const v=d.data[q+'_'+(k+1)];if(v===undefined)delete d.data[q+'_'+k];else d.data[q+'_'+k]=v});ps.forEach(q=>delete d.data[q+'_'+(n-1)]);d.rollN=n-1}
       saveDrafts();S.domDraft=null;render();break}
     case 'agopen':{if(e.target.closest('input,label'))break;S.agingSel=[el.dataset.key];S.modal='aging';renderModal();break}
     case 'agview':S.ag.view=el.dataset.v;render();break;
-    case 'agopenrep':{const ks=agingItems().filter(x=>x.r.id===id&&x.st==='due').map(x=>x.key);if(ks.length){S.agingSel=ks;S.modal='aging';renderModal()}else{S.detailId=id;S.confirmDel=null;renderModal()}break}
+    case 'agopenrep':{const wk=(el.dataset.keys||'').split(',');const ks=agingItems().filter(x=>x.r.id===id&&x.st==='due'&&wk.includes(x.key)).map(x=>x.key);if(ks.length){S.agingSel=ks;S.modal='aging';renderModal()}else{S.detailId=id;S.confirmDel=null;renderModal()}break}
     case 'agbulk':{if(!S.agPick.length)break;S.agingSel=S.agPick.slice();S.modal='aging';renderModal();break}
     case 'agexport':exportAging();break;
     case 'sdel':S.confirmSdel=el.dataset.eid;renderModal();break;
@@ -2221,8 +2263,10 @@ document.addEventListener('input',e=>{
   if(t.dataset&&t.dataset.sf==='q'){S.sf.q=t.value;$('#sresults').innerHTML=sResultsHTML();return}
   if(t.dataset&&t.dataset.tf==='q'){S.tf.q=t.value;$('#tresults').innerHTML=tResultsHTML();return}
   if(t.closest&&t.closest('#rform')){updateForm();queueSave()}
+  const sf=t.closest&&t.closest('form[data-form=tindakan],form[data-form=qcnote]');if(sf)syncSave(sf);
 });
 document.addEventListener('change',e=>{
+  {const sf=e.target.closest&&e.target.closest('form[data-form=tindakan],form[data-form=qcnote]');if(sf)syncSave(sf)}
   const t=e.target;
   if(t.dataset&&t.dataset.filter&&t.dataset.filter!=='q'){S.filters[t.dataset.filter]=t.value;$('#results').innerHTML=resultsHTML();return}
   if(t.dataset&&t.dataset.agpick){const k=t.dataset.agpick;S.agPick=t.checked?Array.from(new Set(S.agPick.concat([k]))):S.agPick.filter(x=>x!==k);$('#agresults').innerHTML=agResultsHTML();return}
